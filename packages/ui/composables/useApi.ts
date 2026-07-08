@@ -597,7 +597,7 @@ export function useConfigActions() {
 }
 
 // Release API
-const METACUBEX_MIHOMO_REPOSITORY_URL = 'repos/MetaCubeX/mihomo'
+const METACUBEX_MIHOMO_REPOSITORY_URL = 'repos/suwey/quiche'
 const VERNESONG_MIHOMO_REPOSITORY_URL = 'repos/vernesong/mihomo'
 const BACKEND_VERSION_RE = /\b(alpha|beta|meta)-?(\S+)/i
 const VERNESONG_MIHOMO_RE = /-smart-/i
@@ -643,7 +643,7 @@ interface ReleaseAPIResponse {
 export async function frontendReleaseAPI(currentVersion: string) {
   const githubAPI = useGithubAPI()
   const { tag_name, body } = await githubAPI
-    .get(`repos/MetaCubeX/metacubexd/releases/latest`)
+    .get(`repos/suwey/metacubexd/releases/latest`)
     .json<ReleaseAPIResponse>()
 
   return {
@@ -707,7 +707,7 @@ export async function fetchFrontendReleasesAPI(
 ): Promise<ReleaseInfo[]> {
   const githubAPI = useGithubAPI()
   const releases = await githubAPI
-    .get(`repos/MetaCubeX/metacubexd/releases`, {
+    .get(`repos/suwey/metacubexd/releases`, {
       searchParams: { per_page: count },
     })
     .json<ReleaseAPIResponse[]>()

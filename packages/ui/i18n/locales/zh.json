@@ -318,6 +318,13 @@
   "fetchRemoteConfig": "拉取远程配置",
   "remoteConfigURL": "远程配置地址",
   "remoteConfigURLPlaceholder": "输入配置文件 URL",
+  "uploadConfigHint": "点击选择或拖拽配置文件到此处应用",
+  "applyingConfig": "正在应用配置...",
+  "configFileApplied": "配置文件应用成功",
+  "configFileApplyFailed": "配置文件应用失败",
+  "configFileEmpty": "配置文件为空",
+  "editConfigFile": "编辑配置文件",
+  "configFileLoadFailed": "加载配置文件失败",
   "shortcuts": {
     "title": "键盘快捷键",
     "category": {

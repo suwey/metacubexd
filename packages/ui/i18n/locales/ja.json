@@ -318,6 +318,13 @@
   "fetchRemoteConfig": "リモート設定を取得",
   "remoteConfigURL": "リモート設定 URL",
   "remoteConfigURLPlaceholder": "設定ファイルの URL を入力",
+  "uploadConfigHint": "クリックまたはドラッグで設定ファイルを適用",
+  "applyingConfig": "設定を適用中...",
+  "configFileApplied": "設定ファイルを適用しました",
+  "configFileApplyFailed": "設定ファイルの適用に失敗しました",
+  "configFileEmpty": "設定ファイルが空です",
+  "editConfigFile": "設定ファイルを編集",
+  "configFileLoadFailed": "設定ファイルの読み込みに失敗しました",
   "shortcuts": {
     "title": "キーボードショートカット",
     "category": {

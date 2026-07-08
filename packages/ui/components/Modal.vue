@@ -67,90 +67,92 @@ defineExpose({ open, close })
 </script>
 
 <template>
-  <dialog
-    ref="dialogRef"
-    class="modal modal-bottom sm:modal-middle"
-    aria-modal="true"
-    :aria-labelledby="title ? titleId : undefined"
-    :style="{
-      '--modal-border':
-        'color-mix(in oklab, var(--color-base-content) 10%, transparent)',
-    }"
-    @cancel.prevent="close"
-  >
-    <div
-      class="modal-shell flex max-h-[90vh] w-[95%] max-w-2xl flex-col overflow-hidden rounded-2xl p-0 sm:w-11/12"
-      :class="isOpen ? 'is-open' : ''"
+  <Teleport to="body">
+    <dialog
+      ref="dialogRef"
+      class="modal modal-bottom sm:modal-middle"
+      aria-modal="true"
+      :aria-labelledby="title ? titleId : undefined"
       :style="{
-        background: 'var(--color-base-100)',
-        border: '1px solid var(--modal-border)',
-        boxShadow:
-          '0 25px 50px -12px color-mix(in oklab, var(--color-base-content) 25%, transparent), 0 0 0 1px var(--modal-border), inset 0 1px 0 0 color-mix(in oklab, var(--color-base-content) 6%, transparent)',
+        '--modal-border':
+          'color-mix(in oklab, var(--color-base-content) 10%, transparent)',
       }"
-      @contextmenu.prevent
+      @cancel.prevent="close"
     >
-      <!-- Header -->
       <div
-        class="sticky top-0 z-10 flex items-center justify-between px-5 py-4 max-sm:pt-[max(1rem,env(safe-area-inset-top))]"
+        class="modal-shell flex max-h-[90vh] w-[95%] max-w-2xl flex-col overflow-hidden rounded-2xl p-0 sm:w-11/12"
+        :class="isOpen ? 'is-open' : ''"
         :style="{
-          background: 'var(--color-base-200)',
-          borderBottom: '1px solid var(--modal-border)',
+          background: 'var(--color-base-100)',
+          border: '1px solid var(--modal-border)',
+          boxShadow:
+            '0 25px 50px -12px color-mix(in oklab, var(--color-base-content) 25%, transparent), 0 0 0 1px var(--modal-border), inset 0 1px 0 0 color-mix(in oklab, var(--color-base-content) 6%, transparent)',
         }"
+        @contextmenu.prevent
       >
+        <!-- Header -->
         <div
-          class="flex items-center gap-3 text-lg font-bold text-base-content [&>svg]:text-primary"
-        >
-          <slot name="icon" />
-          <span :id="titleId">{{ title }}</span>
-        </div>
-
-        <button
-          class="modal-close flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-transparent"
+          class="sticky top-0 z-10 flex items-center justify-between px-5 py-4 max-sm:pt-[max(1rem,env(safe-area-inset-top))]"
           :style="{
-            border: '1px solid var(--modal-border)',
-            color:
-              'color-mix(in oklab, var(--color-base-content) 60%, transparent)',
+            background: 'var(--color-base-200)',
+            borderBottom: '1px solid var(--modal-border)',
           }"
-          @click="close"
         >
-          <IconX :size="18" />
-        </button>
-      </div>
+          <div
+            class="flex items-center gap-3 text-lg font-bold text-base-content [&>svg]:text-primary"
+          >
+            <slot name="icon" />
+            <span :id="titleId">{{ title }}</span>
+          </div>
 
-      <!-- Content -->
-      <div
-        v-if="isRendered"
-        class="flex-1 overflow-y-auto p-5 max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]"
-      >
-        <slot />
-      </div>
+          <button
+            class="modal-close flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-transparent"
+            :style="{
+              border: '1px solid var(--modal-border)',
+              color:
+                'color-mix(in oklab, var(--color-base-content) 60%, transparent)',
+            }"
+            @click="close"
+          >
+            <IconX :size="18" />
+          </button>
+        </div>
 
-      <!-- Actions -->
-      <div
-        v-if="isRendered && $slots.actions"
-        class="sticky bottom-0 z-10 flex items-center justify-end px-5 py-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]"
-        :style="{
-          background: 'var(--color-base-200)',
-          borderTop: '1px solid var(--modal-border)',
-        }"
-      >
-        <div class="flex justify-end gap-2">
-          <slot name="actions" />
+        <!-- Content -->
+        <div
+          v-if="isRendered"
+          class="flex-1 overflow-y-auto p-5 max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+        >
+          <slot />
+        </div>
+
+        <!-- Actions -->
+        <div
+          v-if="isRendered && $slots.actions"
+          class="sticky bottom-0 z-10 flex items-center justify-end px-5 py-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]"
+          :style="{
+            background: 'var(--color-base-200)',
+            borderTop: '1px solid var(--modal-border)',
+          }"
+        >
+          <div class="flex justify-end gap-2">
+            <slot name="actions" />
+          </div>
         </div>
       </div>
-    </div>
 
-    <form
-      method="dialog"
-      class="fixed inset-0 modal-backdrop -z-[1]"
-      :class="isOpen ? 'is-open' : ''"
-    >
-      <button
-        class="absolute inset-0 h-full w-full cursor-pointer border-none bg-transparent"
-        @click="close"
-      />
-    </form>
-  </dialog>
+      <form
+        method="dialog"
+        class="fixed inset-0 modal-backdrop -z-[1]"
+        :class="isOpen ? 'is-open' : ''"
+      >
+        <button
+          class="absolute inset-0 h-full w-full cursor-pointer border-none bg-transparent"
+          @click="close"
+        />
+      </form>
+    </dialog>
+  </Teleport>
 </template>
 
 <style scoped>

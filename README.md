@@ -100,6 +100,44 @@ git clone https://github.com/metacubex/metacubexd.git -b gh-pages /etc/mihomo/ui
 git -C /etc/mihomo/ui pull -r
 ```
 
+### 1b. Embed in an Android App (Bundled Assets)
+
+When bundling the static UI inside an Android APK (e.g. a mihomo-based app
+that serves the dashboard from `serve_path`), the build output needs one
+adjustment before copying into `app/src/main/assets/ui/`.
+
+**The problem:** Android AAPT silently strips files and directories whose
+names start with `_` during APK packaging. The Nuxt build emits `_nuxt/`
+(chunk assets) and `_fonts/` (self-hosted web fonts), so these directories
+would be missing from the installed APK.
+
+**The fix:** Rename `_nuxt` → `nuxt` and `_fonts` → `fonts` in the assets
+copy. The app's runtime code then renames them back when copying assets to
+the device filesystem before serving.
+
+```shell
+# 1. Build the static UI
+pnpm build:ui
+
+# 2. Copy to Android assets, renaming underscore-prefixed dirs
+SRC=packages/ui/.output/public
+DST=app/src/main/assets/ui
+rm -rf "$DST"
+cp -r "$SRC" "$DST"
+mv "$DST/_nuxt" "$DST/nuxt"
+mv "$DST/_fonts" "$DST/fonts"
+```
+
+The app should include a `copyUiAssets()` step that reverses the rename
+when copying from APK assets to the runtime filesystem:
+
+```kotlin
+val dirRename = mapOf("nuxt" to "_nuxt", "fonts" to "_fonts")
+```
+
+See the [Anywhere Android](https://github.com/anywhere/anywhere-android)
+project for a working implementation.
+
 ### 2. Desktop App
 
 Download the installer for your platform from the

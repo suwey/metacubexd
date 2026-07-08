@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DNSQuery } from '~/types'
 import { useMutation } from '@tanstack/vue-query'
+import { toast } from 'vue-sonner'
 import { useConfigActions, useRequest } from '~/composables/useApi'
 import { PORT_FIELDS, useGeneralConfig } from '~/composables/useGeneralConfig'
 import {
@@ -191,6 +192,101 @@ async function onFetchRemoteConfig() {
     await configActions.fetchRemoteConfigAPI(remoteConfigURL.value)
   } catch {
     /* error already logged in API */
+  }
+}
+
+// --- Upload config file (click or drag-and-drop) ---
+const configFileInput = ref<HTMLInputElement>()
+const isDraggingConfig = ref(false)
+const isUploadingConfig = ref(false)
+
+async function applyConfigFile(file: File) {
+  if (!file) return
+  isUploadingConfig.value = true
+  try {
+    const payload = await file.text()
+    if (!payload.trim()) {
+      toast.error(t('configFileEmpty'))
+      return
+    }
+    const request = useRequest()
+    await request.put('configs', {
+      searchParams: { force: true },
+      json: { path: '', payload },
+    })
+    toast.success(t('configFileApplied'))
+  } catch (error) {
+    console.error('Failed to apply config file:', error)
+    toast.error(t('configFileApplyFailed'))
+  } finally {
+    isUploadingConfig.value = false
+    if (configFileInput.value) configFileInput.value.value = ''
+  }
+}
+
+function onConfigFileInputChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) void applyConfigFile(file)
+}
+
+function onDropConfig(event: DragEvent) {
+  isDraggingConfig.value = false
+  const file = event.dataTransfer?.files?.[0]
+  if (file) void applyConfigFile(file)
+}
+
+function onDragOverConfig() {
+  isDraggingConfig.value = true
+}
+
+function onDragLeaveConfig() {
+  isDraggingConfig.value = false
+}
+
+// --- Edit config file in Monaco editor ---
+const MonacoYamlEditor = defineAsyncComponent(
+  () => import('~/components/MonacoYamlEditor.client.vue'),
+)
+const configEditorModalRef = ref<{ open: () => void; close: () => void }>()
+const editorContent = ref('')
+const isEditorLoading = ref(false)
+const isEditorSaving = ref(false)
+
+async function openConfigEditor() {
+  configEditorModalRef.value?.open()
+  isEditorLoading.value = true
+  try {
+    const request = useRequest()
+    editorContent.value = await request.get('configs/file').text()
+  } catch (error) {
+    console.error('Failed to fetch config file:', error)
+    toast.error(t('configFileLoadFailed'))
+    configEditorModalRef.value?.close()
+  } finally {
+    isEditorLoading.value = false
+  }
+}
+
+async function saveConfigEditor() {
+  if (!editorContent.value.trim()) {
+    toast.error(t('configFileEmpty'))
+    return
+  }
+  isEditorSaving.value = true
+  try {
+    const request = useRequest()
+    await request.put('configs', {
+      searchParams: { force: true },
+      json: { path: '', payload: editorContent.value },
+    })
+    toast.success(t('configFileApplied'))
+    configEditorModalRef.value?.close()
+  } catch (error) {
+    console.error('Failed to save config file:', error)
+    toast.error(t('configFileApplyFailed'))
+  } finally {
+    isEditorSaving.value = false
   }
 }
 
@@ -1377,6 +1473,73 @@ const activeSection = ref<'core' | 'xd' | 'tools'>('core')
               </Button>
             </form>
 
+            <!-- Upload Config File (click or drag-and-drop) -->
+            <div
+              class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 transition-colors"
+              :class="
+                isDraggingConfig
+                  ? 'border-primary bg-primary/10'
+                  : 'border-base-300 hover:border-primary'
+              "
+              @click="configFileInput?.click()"
+              @dragover.prevent="onDragOverConfig"
+              @dragleave.prevent="onDragLeaveConfig"
+              @drop.prevent="onDropConfig"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="size-8"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+              >
+                <path
+                  d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"
+                />
+              </svg>
+              <span class="text-sm text-base-content/70">
+                {{
+                  isUploadingConfig
+                    ? t('applyingConfig')
+                    : t('uploadConfigHint')
+                }}
+              </span>
+              <input
+                ref="configFileInput"
+                type="file"
+                accept=".toml,.yaml,.yml,.txt,text/*"
+                class="hidden"
+                @change="onConfigFileInputChange"
+              />
+            </div>
+
+            <!-- Edit Config File (Monaco Editor) -->
+            <div class="flex justify-center">
+              <Button
+                class="btn-outline btn-sm"
+                :loading="isEditorLoading"
+                @click="openConfigEditor"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="size-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
+                  />
+                  <path
+                    d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                  />
+                </svg>
+                {{ t('editConfigFile') }}
+              </Button>
+            </div>
+
             <div class="divider my-3" />
 
             <!-- Action Buttons Grid -->
@@ -1725,6 +1888,37 @@ const activeSection = ref<'core' | 'xd' | 'tools'>('core')
         </template>
       </div>
     </template>
+
+    <!-- Config Editor Modal -->
+    <Modal
+      ref="configEditorModalRef"
+      :title="t('editConfigFile')"
+      @close="isEditorOpen = false"
+    >
+      <div class="min-h-[50vh]">
+        <ClientOnly>
+          <MonacoYamlEditor v-model="editorContent" language="toml" />
+          <template #fallback>
+            <div class="flex h-full items-center justify-center">
+              <span class="loading loading-spinner" />
+            </div>
+          </template>
+        </ClientOnly>
+      </div>
+
+      <template #actions>
+        <Button class="btn-sm" @click="configEditorModalRef?.close()">
+          {{ t('cancel') }}
+        </Button>
+        <Button
+          class="btn-sm btn-primary"
+          :loading="isEditorSaving"
+          @click="saveConfigEditor"
+        >
+          {{ t('save') }}
+        </Button>
+      </template>
+    </Modal>
   </div>
 </template>
 

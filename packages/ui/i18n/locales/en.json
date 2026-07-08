@@ -318,6 +318,13 @@
   "fetchRemoteConfig": "Fetch Remote Config",
   "remoteConfigURL": "Remote Config URL",
   "remoteConfigURLPlaceholder": "Enter config file URL",
+  "uploadConfigHint": "Click or drag config file here to apply",
+  "applyingConfig": "Applying config...",
+  "configFileApplied": "Config file applied successfully",
+  "configFileApplyFailed": "Failed to apply config file",
+  "configFileEmpty": "Config file is empty",
+  "editConfigFile": "Edit Config File",
+  "configFileLoadFailed": "Failed to load config file",
   "shortcuts": {
     "title": "Keyboard Shortcuts",
     "category": {

@@ -59,7 +59,13 @@ function comparePrerelease(a: string, b: string): number {
 
 export function compareVersions(v1: string, v2: string): number {
   const parse = (v: string) => {
-    const cleaned = v
+    // If the version contains a '/', keep only the part after it. Some
+    // backends report versions like "anywhere/v1.0.0" where the prefix
+    // is a build/channel tag, not part of the semver. Stripping it lets
+    // the comparison work against the GitHub release tag (e.g. "v1.0.0").
+    const slashIndex = v.lastIndexOf('/')
+    const sliced = slashIndex !== -1 ? v.slice(slashIndex + 1) : v
+    const cleaned = sliced
       .replace(VERSION_PREFIX_RE, '')
       .replace(VERSION_BUILDMETA_RE, '')
     // Split on the FIRST `-` only — the whole remainder is the pre-release

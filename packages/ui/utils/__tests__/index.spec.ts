@@ -318,6 +318,12 @@ describe('utils/index', () => {
       expect(compareVersions('1.243', '1.243.0')).toBe(0)
       expect(compareVersions('1.243.1', '1.243')).toBeGreaterThan(0)
     })
+
+    it('strips prefix before slash (e.g. anywhere/v1.0.0)', () => {
+      expect(compareVersions('anywhere/v1.0.0', 'v1.0.0')).toBe(0)
+      expect(compareVersions('anywhere/v1.0.0', 'v1.0.1')).toBeLessThan(0)
+      expect(compareVersions('anywhere/v1.1.0', 'v1.0.0')).toBeGreaterThan(0)
+    })
   })
 
   describe('isSingBoxVersion', () => {

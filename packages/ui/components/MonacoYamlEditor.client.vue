@@ -11,7 +11,8 @@ const props = withDefaults(
     readOnly?: boolean
     // 'yaml' (default) wires the meta-json-schema validation; 'javascript'
     // edits script-profile transforms with JS syntax highlighting (no schema).
-    language?: 'yaml' | 'javascript'
+    // 'toml' is used for raw config file editing (ini highlights work well for toml).
+    language?: 'yaml' | 'javascript' | 'toml'
   }>(),
   { readOnly: false, language: 'yaml' },
 )
@@ -46,14 +47,19 @@ onMounted(async () => {
   // Distinct per-language URI: the yaml schema only fileMatches *.yaml, so a JS
   // model lives at a .js URI (no yaml worker / schema attached to it).
   const isJs = props.language === 'javascript'
+  const isToml = props.language === 'toml'
   const uri = monaco.Uri.parse(
-    isJs ? 'inmemory://profile/script.js' : 'inmemory://profile/config.yaml',
+    isJs
+      ? 'inmemory://profile/script.js'
+      : isToml
+        ? 'inmemory://config/anywhere.toml'
+        : 'inmemory://profile/config.yaml',
   )
   model =
     monaco.editor.getModel(uri) ??
     monaco.editor.createModel(
       props.modelValue,
-      isJs ? 'javascript' : 'yaml',
+      isJs ? 'javascript' : isToml ? 'ini' : 'yaml',
       uri,
     )
   model.setValue(props.modelValue)
