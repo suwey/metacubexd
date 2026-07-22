@@ -10,11 +10,11 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import { configureMonacoYaml } from 'monaco-yaml'
 import YamlWorker from 'monaco-yaml/yaml.worker?worker'
-
-;
 import 'monaco-editor/esm/vs/editor/edcore.main'
 import 'monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution'
-import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution';(globalThis as any).MonacoEnvironment = {
+import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution'
+import 'monaco-editor/esm/vs/basic-languages/ini/ini.contribution'
+;(globalThis as any).MonacoEnvironment = {
   getWorker(_id: string, label: string) {
     if (label === 'yaml') return new YamlWorker()
     return new EditorWorker()
