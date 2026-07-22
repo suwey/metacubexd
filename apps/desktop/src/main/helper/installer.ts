@@ -24,8 +24,9 @@ export type ExecFn = (
 /**
  * Injected elevation runner: takes a single shell script and runs it with
  * administrator privileges (ONE prompt). Real impl: mac `osascript ... with
- * administrator privileges`, linux `pkexec`, win UAC `runas`. Tests record the
- * script and never prompt.
+ * administrator privileges`, linux `pkexec`, win UAC `Start-Process -Verb
+ * RunAs` (see `helper/elevate.ts`). Tests record the script and never prompt.
+ * The script itself is NOT privileged — elevate must wrap it.
  */
 export type ElevateFn = (
   script: string,
@@ -168,7 +169,7 @@ WantedBy=multi-user.target`
  * Wrap in single quotes and escape embedded single quotes the standard way.
  */
 function shQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`
+  return `'${value.replaceAll("'", `'\\''`)}'`
 }
 
 /**
@@ -219,8 +220,20 @@ export function createHelperInstaller(
   }
 
   async function darwinIsInstalled(): Promise<boolean> {
-    const { stdout } = await exec(`launchctl print system/${label}`)
-    return stdout.includes(label)
+    try {
+      const { stdout } = await exec(`launchctl print system/${label}`)
+      return stdout.includes(label)
+    } catch (err) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        err.code === 113 // service not found in the requested domain
+      ) {
+        return false
+      }
+      throw err
+    }
   }
 
   // ---- Linux (systemd + pkexec) ----
@@ -255,8 +268,22 @@ export function createHelperInstaller(
   }
 
   async function linuxIsInstalled(): Promise<boolean> {
-    const { stdout } = await exec(`systemctl is-enabled ${serviceName}`)
-    return /\benabled\b/.test(stdout)
+    try {
+      const { stdout } = await exec(`systemctl is-enabled ${serviceName}`)
+      return stdout
+        .split('\n')
+        .some((line) => line.trim().toLowerCase() === 'enabled')
+    } catch (err) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        err.code === 4 // not-found
+      ) {
+        return false
+      }
+      throw err
+    }
   }
 
   // ---- Windows (sc + UAC runas) ----
@@ -296,8 +323,20 @@ export function createHelperInstaller(
   }
 
   async function winIsInstalled(): Promise<boolean> {
-    const { stdout } = await exec(`sc query ${serviceName}`)
-    return stdout.includes(serviceName) && !/FAILED\s+1060/i.test(stdout)
+    try {
+      const { stdout } = await exec(`sc query ${serviceName}`)
+      return stdout.includes(serviceName) && !stdout.includes('1060')
+    } catch (err) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        err.code === 1060 // ERROR_SERVICE_DOES_NOT_EXIST
+      ) {
+        return false
+      }
+      throw err
+    }
   }
 
   return {

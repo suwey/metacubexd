@@ -47,8 +47,22 @@ export function isAuthorized(input: AuthInput): AuthResult {
 
 function parseBearer(header: string | undefined): string | undefined {
   if (!header) return undefined
-  const m = /^bearer\s+(.+)$/i.exec(header.trim())
-  return m ? m[1] : undefined
+  const value = header.trim()
+  let separator = 0
+  while (separator < value.length && !isWhitespace(value[separator]!)) {
+    separator++
+  }
+  if (value.slice(0, separator).toLowerCase() !== 'bearer') return undefined
+
+  let tokenStart = separator
+  while (tokenStart < value.length && isWhitespace(value[tokenStart]!)) {
+    tokenStart++
+  }
+  return tokenStart < value.length ? value.slice(tokenStart) : undefined
+}
+
+function isWhitespace(char: string): boolean {
+  return char.trim() === ''
 }
 
 export default defineEventHandler((event) => {

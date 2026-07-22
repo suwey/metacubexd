@@ -7,6 +7,7 @@ import type { Tray } from 'electron'
 import type { ControlServer } from './control-server'
 import type { HelperInstallOptions } from './helper/installer'
 import type { HelperKernelStartOptions } from './helper/server'
+import type { FailedHotkey } from './hotkeys'
 import type { FsLike } from './paths'
 import { exec as nodeExec } from 'node:child_process'
 import {
@@ -47,11 +48,25 @@ import { getProxyMode, nextProxyMode, setProxyMode } from './clash-config'
 import { runShutdownCleanup } from './cleanup'
 import { startControlServer, stopControlServer } from './control-server'
 import { parseSubscriptionDeepLink } from './deep-link'
+import { registerDesktopIpc } from './desktop-ipc'
+import {
+  DEFAULT_DESKTOP_SETTINGS,
+  loadDesktopSettings,
+  mergeDesktopSettings,
+  saveDesktopSettings,
+} from './desktop-settings'
 import { pickFreePorts } from './free-port'
 import { createHelperClient } from './helper/client'
+import { createHelperElevate } from './helper/elevate'
 import { createHelperInstaller } from './helper/installer'
 import { resolveHelperEntry } from './helper/paths'
-import { loadHotkeyBindings, registerHotkeys } from './hotkeys'
+import {
+  DEFAULT_HOTKEYS,
+  loadHotkeyBindings,
+  registerHotkeys,
+  sanitizeHotkeyBindings,
+  saveHotkeyBindings,
+} from './hotkeys'
 import { createKernelManager } from './kernel-manager'
 import { createLogFileSink } from './log-file'
 import { createLoginItemController } from './login-item'
@@ -60,10 +75,12 @@ import { bootstrapDataDir } from './paths'
 import { buildProxyEnvCommand } from './proxy-env'
 import { makeToken } from './secrets'
 import { createShutdownOrchestrator } from './shutdown-orchestrator'
+import { runSilentUpdateCheck } from './silent-update'
 import { shouldStartHidden } from './startup'
 import { createSystemProxyController } from './sysproxy'
 import { readSysProxyBypass, writeSysProxyBypass } from './sysproxy-config'
 import { createSysproxyGuard } from './sysproxy-guard'
+import { createTrafficPoller, formatTraySpeed } from './traffic-poller'
 import { createTray, trayIconPath } from './tray'
 import { createTunRuntime } from './tun-runtime'
 import { checkForUpdates } from './update-check'
@@ -108,25 +125,14 @@ const helperExec = (cmd: string): Promise<{ stdout: string; stderr: string }> =>
 
 /**
  * Injected elevation runner: run the ONE privileged install/uninstall script
- * with administrator privileges. macOS goes through osascript (`do shell script
- * ... with administrator privileges`, ONE prompt); linux/win go through the
- * installer's own pkexec/UAC commands, so a plain elevated shell suffices. Only
- * ever invoked on an explicit user TUN enable — never at boot, never in tests.
+ * with administrator privileges (osascript / pkexec / UAC RunAs). Only ever
+ * invoked on an explicit user TUN enable — never at boot, never in tests.
+ * See `helper/elevate.ts` — a plain exec here was the #2116 Windows TUN 500.
  */
-const helperElevate = (
-  script: string,
-): Promise<{ stdout: string; stderr: string }> => {
-  if (process.platform === 'darwin') {
-    // Escape for embedding inside an AppleScript string literal.
-    const escaped = script.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-    return execAsync(
-      `osascript -e 'do shell script "${escaped}" with administrator privileges'`,
-    )
-  }
-  // linux: the script already contains pkexec-eligible commands; win: runas/UAC.
-  // Run it through the platform shell; the script's own commands carry privilege.
-  return execAsync(script)
-}
+const helperElevate = createHelperElevate({
+  platform: process.platform,
+  exec: helperExec,
+})
 
 /**
  * Per-OS local socket / named-pipe path + root-owned secret-file path for the
@@ -188,6 +194,16 @@ let tunTeardown: ReturnType<typeof createTunRuntime>['teardown'] | null = null
 // errors, so post-mortem support has more than a vanished toast. Created in
 // boot(); notify() tolerates it being null before that.
 let appLog: ReturnType<typeof createLogFileSink> | null = null
+// Desktop-shell settings (silent update check, TUN auto-restore, tray speed),
+// loaded in boot() from userData/desktop-settings.json and mutated through the
+// desktop:set-settings IPC channel.
+let desktopSettings = { ...DEFAULT_DESKTOP_SETTINGS }
+let desktopSettingsPath: string | null = null
+// Live tray speed: the /traffic stream poller + its last formatted line. The
+// poller runs while showTraySpeed is on; macOS additionally paints the line
+// into the menu-bar title every sample.
+let trafficPoller: ReturnType<typeof createTrafficPoller> | null = null
+let lastSpeedLine: string | null = null
 
 // Real fs adapter for the log sinks (recursive mkdir; byte-accurate size).
 const logFsAdapter = {
@@ -223,6 +239,12 @@ function devAppIcon(): Electron.NativeImage | null {
 async function boot(): Promise<void> {
   const userData = app.getPath('userData')
   const paths = bootstrapDataDir(userData, defaultConfigSource(), fsAdapter)
+
+  // Desktop-shell settings (silent update check / TUN auto-restore / tray
+  // speed). Loaded up front — the TUN cold-start path below already branches
+  // on tunAutoRestore.
+  desktopSettingsPath = join(userData, 'desktop-settings.json')
+  desktopSettings = loadDesktopSettings(desktopSettingsPath, fsAdapter)
 
   // Resolve mihomo binary (user override read from a settings file if present).
   const overridePath = join(userData, 'mihomo-bin-override.txt')
@@ -420,6 +442,7 @@ async function boot(): Promise<void> {
     arch: process.arch,
     kernelsDir: join(userData, 'kernels'),
     overridePath,
+    githubToken: process.env.GITHUB_TOKEN,
   })
 
   // Wire the REAL TUN runtime (B-3): the B-1 state machine driving the B-2 helper
@@ -446,17 +469,20 @@ async function boot(): Promise<void> {
         }
         return s
       })()
+  // Hoisted out of createTunRuntime so the TUN auto-restore gate below can
+  // probe isInstalled() (cheap, un-elevated) without a second installer.
+  const helperInstaller = createHelperInstaller({
+    platform: process.platform,
+    exec: helperExec,
+    elevate: helperElevate,
+    paths: {
+      label: HELPER_LABEL,
+      serviceName: HELPER_SERVICE_NAME,
+      secretPath: tunPaths.secretFile,
+    },
+  })
   const tunRuntime = createTunRuntime({
-    installer: createHelperInstaller({
-      platform: process.platform,
-      exec: helperExec,
-      elevate: helperElevate,
-      paths: {
-        label: HELPER_LABEL,
-        serviceName: HELPER_SERVICE_NAME,
-        secretPath: tunPaths.secretFile,
-      },
-    }),
+    installer: helperInstaller,
     // Lazily dial the helper IPC socket only on the privileged relaunch —
     // createHelperClient connects at construction, and the helper isn't listening
     // until it's installed. Forward the runtime's disconnect handler so an
@@ -536,21 +562,28 @@ async function boot(): Promise<void> {
   realTunController = tunRuntime.controller
   tunTeardown = tunRuntime.teardown
 
-  // Cold-start restore prompt: if the last session ended in TUN mode, surface a
-  // notification rather than auto-elevating (an unattended boot must never pop a
-  // privilege prompt). The renderer re-enables TUN through /api/control/tun on
-  // the user's confirmation (B-4 UI). Best-effort read; a missing/corrupt file
-  // means "was sidecar", so nothing to prompt.
+  // Cold-start restore: if the last session ended in TUN mode, either queue an
+  // automatic re-enable (opt-in setting; runs after the kernel starts and ONLY
+  // when the helper service is already installed, so an unattended boot never
+  // pops a privilege prompt) or surface a notification for the manual path.
+  // Best-effort read; a missing/corrupt file means "was sidecar".
+  let tunRestoreStack: string | null = null
   try {
     if (existsSync(tunStatePath)) {
       const last = JSON.parse(readFileSync(tunStatePath, 'utf8')) as {
         mode?: string
+        stack?: string
       }
       if (last.mode === 'tun') {
-        notify(
-          'TUN mode was active',
-          'Re-enable TUN from the dashboard to resume routing all traffic.',
-        )
+        if (desktopSettings.tunAutoRestore) {
+          tunRestoreStack =
+            typeof last.stack === 'string' ? last.stack : 'mixed'
+        } else {
+          notify(
+            'TUN mode was active',
+            'Re-enable TUN from the dashboard to resume routing all traffic.',
+          )
+        }
       }
     }
   } catch (err) {
@@ -639,6 +672,21 @@ async function boot(): Promise<void> {
   // Loopback proxy port for Wave 2 system-proxy wiring.
   process.env.MCXD_MIXED_PORT = String(mixedPort)
 
+  // Tray speed: stream the Clash /traffic endpoint and keep the last formatted
+  // line for the tooltip; macOS additionally paints it into the menu-bar title
+  // every sample (monospaced digits so the width doesn't jitter). Started only
+  // while the setting is on; the settings IPC toggles it live.
+  trafficPoller = createTrafficPoller({
+    endpoint: { url: `http://127.0.0.1:${clashPort}`, secret: clashSecret },
+    onSample: (sample) => {
+      lastSpeedLine = formatTraySpeed(sample)
+      if (process.platform === 'darwin') {
+        tray?.setTitle(lastSpeedLine, { fontType: 'monospacedDigit' })
+      }
+    },
+  })
+  if (desktopSettings.showTraySpeed) trafficPoller.start()
+
   // Start the kernel WITHOUT blocking boot()/window creation. The renderer
   // already tolerates a not-yet-running kernel (its backend websockets retry
   // once it comes up), so the window shows immediately while the kernel boots in
@@ -659,6 +707,28 @@ async function boot(): Promise<void> {
         if (await sp.isEnabled()) await sp.enable()
       } catch (err) {
         notify('System proxy failed to resume', err)
+      }
+      // TUN auto-restore (opt-in, queued above): only when the helper service
+      // is ALREADY installed — enable() then reaches the running root/admin
+      // service over its socket without any elevation prompt. A missing
+      // service falls back to the manual-path notification.
+      if (tunRestoreStack !== null) {
+        try {
+          if (await helperInstaller.isInstalled()) {
+            await tunRuntime.controller.enable({ stack: tunRestoreStack })
+            notify(
+              'TUN mode restored',
+              'Routing all traffic through TUN again.',
+            )
+          } else {
+            notify(
+              'TUN mode was active',
+              'Re-enable TUN from the dashboard to resume routing all traffic.',
+            )
+          }
+        } catch (err) {
+          notify('TUN auto-restore failed', err)
+        }
       }
     })
     .catch((err) => notify('Kernel failed to start', err))
@@ -713,15 +783,14 @@ function persistWindowBounds(immediate = false): void {
   }, 300)
 }
 
-// Close-to-tray vs real quit. Mature proxy clients treat the window close
-// button as "hide to tray" — the app keeps proxying and the renderer stays
-// alive for an instant re-summon — and reserve real teardown for an explicit
-// quit (tray Quit / Cmd+Q / SIGTERM). before-quit flips this so the same close
-// event lets the window actually die on quit.
+// Close button / hotkey dismiss destroys the BrowserWindow so the Chromium
+// renderer exits (#2117). The kernel + tray keep proxying; tray/hotkey/dock
+// recreate the window via focusWindow(). before-quit still flips isQuitting so
+// we can skip the "still running" tip on a real quit.
 let isQuitting = false
 
-// One-time (persisted) hint after the first close-to-tray, so a new user does
-// not mistake the hidden window for a quit — the classic tray-app confusion.
+// One-time (persisted) hint after the first panel close, so a new user does
+// not mistake a destroyed window for a full quit — the classic tray-app confusion.
 function showCloseTipOnce(): void {
   const marker = join(app.getPath('userData'), 'close-tip-shown')
   if (existsSync(marker)) return
@@ -733,11 +802,17 @@ function showCloseTipOnce(): void {
   const where = process.platform === 'darwin' ? 'menu bar' : 'tray'
   notify(
     'MetaCubeXD is still running',
-    `The window was hidden to the ${where}; the proxy keeps running. Quit from the ${where} menu.`,
+    `The window was closed; the proxy keeps running in the ${where}. Quit from the ${where} menu.`,
   )
 }
 
-function createWindow(startHidden = false): void {
+/** Tell an open renderer to refetch Clash config/proxies (no-op if none). */
+function notifyBackendInvalidate(reason?: string): void {
+  if (!win || win.isDestroyed()) return
+  win.webContents.send('backend:invalidate', reason ? { reason } : {})
+}
+
+function createWindow(): void {
   const devIcon = devAppIcon()
   // Restore the persisted geometry (sanitized) so the window reopens where the
   // user left it; first run / corrupt state falls back to the default size.
@@ -805,20 +880,12 @@ function createWindow(startHidden = false): void {
     win?.webContents.send('window:maximize-changed', win.isMaximized())
   win.on('maximize', sendMaximizeState)
   win.on('unmaximize', sendMaximizeState)
-  // Re-apply the persisted maximize state, but tie it to the reveal. A normal
-  // launch maximizes in the ready-to-show handler right before the first paint
-  // (flicker-free). A hidden (login-launch) start must stay off-screen — the
-  // kernel still boots and the tray can summon it later — and maximize() shows
-  // a not-yet-displayed window, so defer it to the first real show or it would
-  // pop the window open at every login. Non-maximized hidden starts just wait.
-  if (!startHidden) {
-    win.once('ready-to-show', () => {
-      if (bounds.maximized) win?.maximize()
-      win?.show()
-    })
-  } else if (bounds.maximized) {
-    win.once('show', () => win?.maximize())
-  }
+  // Maximize (if persisted) then reveal — tied to ready-to-show so the first
+  // paint is already the correct size (no flash of the restored bounds).
+  win.once('ready-to-show', () => {
+    if (bounds.maximized) win?.maximize()
+    win?.show()
+  })
   // Restore the persisted Chromium zoom once the document exists (setting it
   // before the first load is overwritten by the navigation's default).
   if (bounds.zoomLevel !== undefined) {
@@ -831,26 +898,26 @@ function createWindow(startHidden = false): void {
   // position is saved even if the debounce timer hadn't fired yet.
   win.on('resize', () => persistWindowBounds())
   win.on('move', () => persistWindowBounds())
-  // Close-to-tray: hide instead of destroy unless the app is quitting. Keeps
-  // the renderer alive (instant re-summon from tray/hotkey/dock) and preserves
-  // in-page state; the proxy keeps running either way. A fullscreen window
-  // must leave fullscreen first — hiding one leaves a dead black macOS Space.
+  // Destroy on close so the Chromium renderer exits (#2117). Kernel + tray keep
+  // running; focusWindow() recreates the window on the next summon. A fullscreen
+  // window must leave fullscreen first — closing one mid-Space is messy on macOS.
   win.on('close', (event) => {
     persistWindowBounds(true)
-    if (isQuitting) return
-    event.preventDefault()
     if (win?.isFullScreen()) {
-      win.once('leave-full-screen', () => win?.hide())
+      event.preventDefault()
+      win.once('leave-full-screen', () => {
+        if (!win || win.isDestroyed()) return
+        win.close()
+      })
       win.setFullScreen(false)
-    } else {
-      win?.hide()
+      return
     }
-    showCloseTipOnce()
+    if (!isQuitting) showCloseTipOnce()
   })
-  // Drop the reference once truly destroyed (quit path) so every window
-  // consumer (tray/hotkeys/deep links via focusWindow) recreates instead of
-  // calling into a destroyed object — that throw used to take down the app via
-  // the uncaughtException handler.
+  // Drop the reference once destroyed so every window consumer
+  // (tray/hotkeys/deep links via focusWindow) recreates instead of calling into
+  // a destroyed object — that throw used to take down the app via the
+  // uncaughtException handler.
   win.on('closed', () => {
     win = null
   })
@@ -863,6 +930,9 @@ function createWindow(startHidden = false): void {
 async function shutdownKernel(): Promise<void> {
   // Halt subscription auto-update ticking so no refresh fires mid-shutdown.
   profileScheduler?.stop()
+  // Stop streaming /traffic — the kernel is about to go away and a reconnect
+  // loop during teardown is just noise.
+  trafficPoller?.stop()
   // Anti-lockout: if TUN mode is active, tear it down (back to sidecar) before
   // the kernel stops so we never leave the machine routing into a dead TUN
   // device. recoverNetwork() is a no-op in sidecar mode and never throws; in TUN
@@ -894,9 +964,9 @@ async function shutdownKernel(): Promise<void> {
   })
 }
 
-// Summon + focus the main window, recreating it when none exists (the quit
-// path destroys it; every other close is a hide). Never touches a destroyed
-// window — the tray/hotkey/deep-link/second-instance paths all route here.
+// Summon + focus the main window, recreating it when none exists (close and
+// quit both destroy it). Never touches a destroyed window — the
+// tray/hotkey/deep-link/second-instance paths all route here.
 function focusWindow(): void {
   if (!win || win.isDestroyed()) {
     createWindow()
@@ -905,13 +975,16 @@ function focusWindow(): void {
   if (win.isMinimized()) win.restore()
   win.show()
   win.focus()
+  // Window was already alive — push a soft refresh so tray/external Clash
+  // edits surface without a full remount (#2117).
+  notifyBackendInvalidate('show')
 }
 
-// Global-hotkey window toggle: hide when visible, otherwise summon + focus
-// (recreating the window if needed).
+// Global-hotkey window toggle: destroy when visible (free the renderer),
+// otherwise summon + focus (recreating the window if needed).
 function toggleWindowVisibility(): void {
   if (win && !win.isDestroyed() && win.isVisible() && !win.isMinimized()) {
-    win.hide()
+    win.close()
   } else {
     focusWindow()
   }
@@ -944,7 +1017,9 @@ async function cycleProxyMode(): Promise<void> {
   const next = nextProxyMode(await getProxyMode(fetch, endpoint))
   if (!(await setProxyMode(fetch, endpoint, next))) {
     notify('Proxy mode switch failed', 'the kernel did not accept the change')
+    return
   }
+  notifyBackendInvalidate('mode')
 }
 
 // Wraps the Electron Notification constructor (dependency-injected in
@@ -969,7 +1044,9 @@ function notify(title: string, body: unknown): void {
 // the app deliberately ships without an updater (publish: null).
 async function runUpdateCheck(): Promise<void> {
   try {
-    const result = await checkForUpdates(fetch, app.getVersion())
+    const result = await checkForUpdates(fetch, app.getVersion(), {
+      githubToken: process.env.GITHUB_TOKEN,
+    })
     if (!result.hasUpdate) {
       notify(
         'Up to date',
@@ -1099,12 +1176,13 @@ if (!app.requestSingleInstanceLock()) {
       return
     }
     // Silent start: a login-launch (--hidden arg or OS wasOpenedAtLogin) boots
-    // the kernel but keeps the window hidden until summoned from the tray.
+    // the kernel but skips creating the BrowserWindow entirely so no Chromium
+    // renderer sits idle until the user summons the panel from the tray (#2117).
     const startHidden = shouldStartHidden(
       process.argv,
       app.getLoginItemSettings(),
     )
-    createWindow(startHidden)
+    if (!startHidden) createWindow()
     // Register the window-control IPC channels ONCE (the title bar on
     // Windows/Linux drives minimize/maximize/close through them). getWindow is
     // lazy so a later createWindow() (macOS reopen) is picked up automatically.
@@ -1214,6 +1292,7 @@ if (!app.requestSingleInstanceLock()) {
                   await agent!.supervisor.restart()
                   const name = metas.find((m) => m.id === id)?.name ?? id
                   notify('Profile activated', `${name} is now active.`)
+                  notifyBackendInvalidate('profile')
                 } catch (err) {
                   notify('Profile switch failed', err)
                   throw err
@@ -1230,6 +1309,9 @@ if (!app.requestSingleInstanceLock()) {
         notify('Proxy command copied', cmd)
       },
       loginItem,
+      // Last formatted /traffic sample for the tooltip (poller in boot()).
+      getSpeedLine: () => lastSpeedLine,
+      onBackendInvalidate: () => notifyBackendInvalidate('mode'),
     })
     // Native application menu. Without it the OS never wires the standard
     // Cmd/Ctrl+C / V / A accelerators, so copy/paste silently fail in inputs
@@ -1268,24 +1350,108 @@ if (!app.requestSingleInstanceLock()) {
     // toggleSystemProxy/cycleProxyMode are async; the action signature is void
     // so we fire-and-forget here (each notifies on failure). An accelerator
     // that fails to register (owned by another app / a typo in hotkeys.json)
-    // is surfaced instead of dying silently.
-    const hotkeys = registerHotkeys({
-      globalShortcut,
-      bindings: loadHotkeyBindings(
-        join(app.getPath('userData'), 'hotkeys.json'),
-        fsAdapter,
-      ),
-      actions: {
-        toggleSystemProxy: () => void toggleSystemProxy(),
-        cycleProxyMode: () => void cycleProxyMode(),
-        toggleWindow: () => toggleWindowVisibility(),
-      },
-    })
-    if (hotkeys.failed.length > 0) {
+    // is surfaced instead of dying silently. applyHotkeys re-registers from
+    // scratch so the settings panel's saves take effect live.
+    const hotkeysPath = join(app.getPath('userData'), 'hotkeys.json')
+    const hotkeyActions = {
+      toggleSystemProxy: () => void toggleSystemProxy(),
+      cycleProxyMode: () => void cycleProxyMode(),
+      toggleWindow: () => toggleWindowVisibility(),
+    }
+    let hotkeyBindings = loadHotkeyBindings(hotkeysPath, fsAdapter)
+    let hotkeyFailed: FailedHotkey[] = []
+    const applyHotkeys = (bindings: typeof hotkeyBindings): void => {
+      globalShortcut.unregisterAll()
+      const result = registerHotkeys({
+        globalShortcut,
+        bindings,
+        actions: hotkeyActions,
+      })
+      hotkeyBindings = bindings
+      hotkeyFailed = result.failed
+    }
+    applyHotkeys(hotkeyBindings)
+    if (hotkeyFailed.length > 0) {
       notify(
         'Some hotkeys failed to register',
-        hotkeys.failed.map((f) => `${f.accelerator} (${f.action})`).join(', '),
+        hotkeyFailed.map((f) => `${f.accelerator} (${f.action})`).join(', '),
       )
+    }
+
+    // Desktop-settings + hotkeys IPC (the dashboard's Desktop panel). The
+    // setters own persistence and live side effects: toggling the tray speed
+    // starts/stops the /traffic poller, saving hotkeys re-registers them.
+    registerDesktopIpc({
+      ipcMain,
+      settings: {
+        get: () => ({ ...desktopSettings }),
+        set: (patch) => {
+          const next = mergeDesktopSettings(desktopSettings, patch)
+          const speedToggled =
+            next.showTraySpeed !== desktopSettings.showTraySpeed
+          desktopSettings = next
+          if (desktopSettingsPath) {
+            try {
+              saveDesktopSettings(desktopSettingsPath, fsAdapter, next)
+            } catch (err) {
+              notify('Failed to save desktop settings', err)
+            }
+          }
+          if (speedToggled) {
+            if (next.showTraySpeed) {
+              trafficPoller?.start()
+            } else {
+              trafficPoller?.stop()
+              lastSpeedLine = null
+              if (process.platform === 'darwin') tray?.setTitle('')
+            }
+          }
+          return { ...desktopSettings }
+        },
+      },
+      hotkeys: {
+        get: () => ({
+          bindings: { ...hotkeyBindings },
+          defaults: { ...DEFAULT_HOTKEYS },
+          failed: [...hotkeyFailed],
+        }),
+        set: (patch) => {
+          const bindings = sanitizeHotkeyBindings(patch)
+          try {
+            saveHotkeyBindings(hotkeysPath, fsAdapter, bindings)
+          } catch (err) {
+            notify('Failed to save hotkeys', err)
+          }
+          applyHotkeys(bindings)
+          return {
+            bindings: { ...hotkeyBindings },
+            defaults: { ...DEFAULT_HOTKEYS },
+            failed: [...hotkeyFailed],
+          }
+        },
+      },
+    })
+
+    // Silent update check (opt-out via the Desktop settings panel): delayed so
+    // it never competes with boot, throttled + de-duplicated inside
+    // runSilentUpdateCheck (24h between checks; one notification per release).
+    // Notification-only — the app still never self-updates.
+    if (desktopSettings.silentUpdateCheck) {
+      setTimeout(() => {
+        void runSilentUpdateCheck({
+          check: () =>
+            checkForUpdates(fetch, app.getVersion(), {
+              githubToken: process.env.GITHUB_TOKEN,
+            }),
+          statePath: join(app.getPath('userData'), 'update-check-state.json'),
+          fs: fsAdapter,
+          notifyUpdate: (r) =>
+            notify(
+              'Update available',
+              `MetaCubeXD ${r.latest} is out (you run ${r.current}). Download it from GitHub Releases.`,
+            ),
+        })
+      }, 15_000)
     }
 
     // Flush a deep link that arrived (and was queued) before the agent existed.
@@ -1313,8 +1479,7 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.on('before-quit', (event) => {
-    // Let the window really close from here on (the close handler otherwise
-    // intercepts and hides it — close-to-tray).
+    // Mark quit so the close tip is skipped when the window is torn down.
     isQuitting = true
     if (shutdown.hasRun()) return
     event.preventDefault()

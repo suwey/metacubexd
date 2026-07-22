@@ -6,23 +6,33 @@ interface ExecResult {
   stderr: string
 }
 
+type RunnerResponse = string | Error
+
+function commandError(code: number): Error & { code: number } {
+  return Object.assign(new Error(`command exited with code ${code}`), { code })
+}
+
 /**
  * A scripted mock for the injected `exec` (un-elevated queries) and `elevate`
  * (the ONE privileged script per install/uninstall). Both record every command
  * string issued and default to empty stdout, so NO test ever shells out to the
  * real OS, installs a service, or triggers an elevation prompt.
  */
-function makeRunners(responses: string[] = []) {
+function makeRunners(responses: RunnerResponse[] = []) {
   const execCalls: string[] = []
   const elevateCalls: string[] = []
   const queue = [...responses]
   const exec = vi.fn(async (cmd: string): Promise<ExecResult> => {
     execCalls.push(cmd)
-    return { stdout: queue.shift() ?? '', stderr: '' }
+    const response = queue.shift()
+    if (response instanceof Error) throw response
+    return { stdout: response ?? '', stderr: '' }
   })
   const elevate = vi.fn(async (script: string): Promise<ExecResult> => {
     elevateCalls.push(script)
-    return { stdout: queue.shift() ?? '', stderr: '' }
+    const response = queue.shift()
+    if (response instanceof Error) throw response
+    return { stdout: response ?? '', stderr: '' }
   })
   return { exec, elevate, execCalls, elevateCalls }
 }
@@ -58,19 +68,19 @@ describe('createHelperInstaller', () => {
       })
 
       await expect(installer.install(INSTALL_OPTS)).rejects.toThrow(
-        /unsupported platform/i,
+        'unsupported platform',
       )
       await expect(installer.uninstall()).rejects.toThrow(
-        /unsupported platform/i,
+        'unsupported platform',
       )
       await expect(installer.isInstalled()).rejects.toThrow(
-        /unsupported platform/i,
+        'unsupported platform',
       )
     })
   })
 
   describe('macOS (darwin)', () => {
-    function darwinInstaller(responses: string[] = []) {
+    function darwinInstaller(responses: RunnerResponse[] = []) {
       const runners = makeRunners(responses)
       const installer = createHelperInstaller({
         platform: 'darwin',
@@ -130,12 +140,11 @@ describe('createHelperInstaller', () => {
       expect(script).toContain(INSTALL_OPTS.secret)
       // Written under umask 077 so it is 0600 from the first byte (never briefly
       // world-readable between the write and the chmod).
-      expect(script).toMatch(/umask\s+0?77;[^\n]*printf[^\n]*helper\.secret/)
+      expect(script).toContain('(umask 077; printf')
+      expect(script).toContain('helper.secret)')
       // root-owned + 0600 (root-only): no other local user can read the secret.
-      expect(script).toMatch(/chown\s+root[: ]/)
-      expect(script).toMatch(
-        /chmod\s+0?600\s+\/etc\/metacubexd\/helper\.secret/,
-      )
+      expect(script).toContain('chown root:')
+      expect(script).toContain('chmod 0600 /etc/metacubexd/helper.secret')
       // Register the daemon with launchctl bootstrap system.
       expect(script).toContain(
         'launchctl bootstrap system /Library/LaunchDaemons/io.github.metacubexd.helper.plist',
@@ -173,6 +182,17 @@ describe('createHelperInstaller', () => {
     it('isInstalled() reports false when the daemon is absent', async () => {
       const { installer } = darwinInstaller([''])
       expect(await installer.isInstalled()).toBe(false)
+    })
+
+    it('isInstalled() reports false when launchctl exits because the daemon is absent', async () => {
+      const { installer } = darwinInstaller([commandError(113)])
+      expect(await installer.isInstalled()).toBe(false)
+    })
+
+    it('isInstalled() rethrows unexpected launchctl errors', async () => {
+      const error = commandError(1)
+      const { installer } = darwinInstaller([error])
+      await expect(installer.isInstalled()).rejects.toBe(error)
     })
   })
 
@@ -233,11 +253,10 @@ describe('createHelperInstaller', () => {
       expect(script).toContain(INSTALL_OPTS.secret)
       // umask 077 so the secret file is 0600 from the first byte (no brief
       // world-readable window before the chmod).
-      expect(script).toMatch(/umask\s+0?77;[^\n]*printf[^\n]*helper\.secret/)
-      expect(script).toMatch(/chown\s+root[: ]/)
-      expect(script).toMatch(
-        /chmod\s+0?600\s+\/etc\/metacubexd\/helper\.secret/,
-      )
+      expect(script).toContain('(umask 077; printf')
+      expect(script).toContain('helper.secret)')
+      expect(script).toContain('chown root:')
+      expect(script).toContain('chmod 0600 /etc/metacubexd/helper.secret')
       expect(script).toContain('systemctl daemon-reload')
       expect(script).toContain('systemctl enable --now metacubexd-helper')
     })
@@ -269,7 +288,7 @@ describe('createHelperInstaller', () => {
   })
 
   describe('windows (win32)', () => {
-    function winInstaller(responses: string[] = []) {
+    function winInstaller(responses: RunnerResponse[] = []) {
       const runners = makeRunners(responses)
       const installer = createHelperInstaller({
         platform: 'win32',
@@ -339,6 +358,17 @@ describe('createHelperInstaller', () => {
         '[SC] EnumQueryServicesStatus:OpenService FAILED 1060',
       ])
       expect(await absent.installer.isInstalled()).toBe(false)
+    })
+
+    it('isInstalled() reports false when sc exits because the service is absent', async () => {
+      const { installer } = winInstaller([commandError(1060)])
+      expect(await installer.isInstalled()).toBe(false)
+    })
+
+    it('isInstalled() rethrows unexpected sc errors', async () => {
+      const error = commandError(5)
+      const { installer } = winInstaller([error])
+      await expect(installer.isInstalled()).rejects.toBe(error)
     })
   })
 

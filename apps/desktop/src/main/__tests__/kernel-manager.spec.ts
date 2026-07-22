@@ -167,7 +167,7 @@ describe('createKernelManager', () => {
         listVersions: vi.fn(),
       })
 
-      await expect(mgr.switch('v1.19.27')).rejects.toThrow(/download failed/)
+      await expect(mgr.switch('v1.19.27')).rejects.toThrow('download failed')
       expect(writeOverride).not.toHaveBeenCalled()
       expect(setBinaryPath).not.toHaveBeenCalled()
       expect(restart).not.toHaveBeenCalled()

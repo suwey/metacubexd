@@ -1,5 +1,97 @@
 # Changelog
 
+## [1.270.0](https://github.com/MetaCubeX/metacubexd/compare/v1.269.1...v1.270.0) (2026-07-20)
+
+
+### Features
+
+* **desktop:** tray speed & node switch, silent update, hotkey settings, TUN auto-restore ([2f303bb](https://github.com/MetaCubeX/metacubexd/commit/2f303bbf98ebc71ddc4d75ee056ffba40b4fa565))
+
+## [1.269.1](https://github.com/MetaCubeX/metacubexd/compare/v1.269.0...v1.269.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* **deps:** restore toolchain compatibility by reverting typescript to ^6.0.3 ([bc8c374](https://github.com/MetaCubeX/metacubexd/commit/bc8c374d6810b1436eaed5f5283c16e5c20f888b))
+* memory chart unit should be MB instead of MB/s ([bc76c56](https://github.com/MetaCubeX/metacubexd/commit/bc76c56623d7edf31274394c4ccf052b4f9c18b3)), closes [#2143](https://github.com/MetaCubeX/metacubexd/issues/2143)
+
+## [1.269.0](https://github.com/MetaCubeX/metacubexd/compare/v1.268.5...v1.269.0) (2026-07-16)
+
+
+### Features
+
+* add visual profile configuration editor ([fddcf21](https://github.com/MetaCubeX/metacubexd/commit/fddcf21fd38e0ff0855cca1dde08eded8243d25e))
+
+## [1.268.5](https://github.com/MetaCubeX/metacubexd/compare/v1.268.4...v1.268.5) (2026-07-16)
+
+
+### Bug Fixes
+
+* address release and profile reliability issues ([2dc9212](https://github.com/MetaCubeX/metacubexd/commit/2dc9212715ec66385e168fa090dc93d5db8f4c00))
+
+## [1.268.4](https://github.com/MetaCubeX/metacubexd/compare/v1.268.3...v1.268.4) (2026-07-14)
+
+
+### Bug Fixes
+
+* **desktop:** ship Linux icon sizes ([d61af62](https://github.com/MetaCubeX/metacubexd/commit/d61af626eb071bb849948b4471666cae071ea362)), closes [#2131](https://github.com/MetaCubeX/metacubexd/issues/2131)
+
+## [1.268.3](https://github.com/MetaCubeX/metacubexd/compare/v1.268.2...v1.268.3) (2026-07-13)
+
+
+### Bug Fixes
+
+* **connections:** align mobile connection details ([9bbab26](https://github.com/MetaCubeX/metacubexd/commit/9bbab261589a5c720f0007f12022c721eee44328))
+
+## [1.268.2](https://github.com/MetaCubeX/metacubexd/compare/v1.268.1...v1.268.2) (2026-07-13)
+
+
+### Bug Fixes
+
+* **desktop:** handle linux helper not found ([#2126](https://github.com/MetaCubeX/metacubexd/issues/2126)) ([cad64d7](https://github.com/MetaCubeX/metacubexd/commit/cad64d7e6d8c9ccfd282fa90fead37664097368c))
+* **desktop:** handle missing helper service probes ([ba77600](https://github.com/MetaCubeX/metacubexd/commit/ba77600d041a789ffee9fad7caa8cf2b4f28ee48)), closes [#2127](https://github.com/MetaCubeX/metacubexd/issues/2127) [#2128](https://github.com/MetaCubeX/metacubexd/issues/2128)
+* **proxies:** reuse successful provider latency history ([4f2ddc6](https://github.com/MetaCubeX/metacubexd/commit/4f2ddc6c648060605768cea937e85e8db9b86495))
+
+## [1.268.1](https://github.com/MetaCubeX/metacubexd/compare/v1.268.0...v1.268.1) (2026-07-13)
+
+
+### Bug Fixes
+
+* **desktop:** repair Linux package release ([3ded5cf](https://github.com/MetaCubeX/metacubexd/commit/3ded5cf92c9ff06fd1f05a8247748702c2deadea))
+
+## [1.268.0](https://github.com/MetaCubeX/metacubexd/compare/v1.267.3...v1.268.0) (2026-07-13)
+
+
+### Features
+
+* **desktop:** add native Linux and Homebrew packages ([8d1e98f](https://github.com/MetaCubeX/metacubexd/commit/8d1e98ffae128f5ee41a8fa4754004cdd023c89c)), closes [#2123](https://github.com/MetaCubeX/metacubexd/issues/2123)
+
+## [1.267.3](https://github.com/MetaCubeX/metacubexd/compare/v1.267.2...v1.267.3) (2026-07-13)
+
+
+### Bug Fixes
+
+* **agent:** allow geo-backed profile validation ([c726025](https://github.com/MetaCubeX/metacubexd/commit/c726025b3bd258f5b132e614de6a6a0b29f09264))
+* **agent:** bound subscription profile fetches ([7d01428](https://github.com/MetaCubeX/metacubexd/commit/7d0142826b9603e010c8f1561aec54f3446a9680))
+* **ui:** align profile operation timeouts ([3fe4784](https://github.com/MetaCubeX/metacubexd/commit/3fe47845ac7ff7f78439c4edc2f713865ce3f3cb))
+* **ui:** surface profile validation details ([500bcb1](https://github.com/MetaCubeX/metacubexd/commit/500bcb1ef9a3cf52558a765d02d8a535dac9b787))
+
+## [1.267.2](https://github.com/MetaCubeX/metacubexd/compare/v1.267.1...v1.267.2) (2026-07-11)
+
+
+### Bug Fixes
+
+* **ui:** stop proxies page horizontal overflow in two-column layout ([046658c](https://github.com/MetaCubeX/metacubexd/commit/046658cf0f562487a358448088efa473de2af0c0))
+
+## [1.267.1](https://github.com/MetaCubeX/metacubexd/compare/v1.267.0...v1.267.1) (2026-07-11)
+
+
+### Bug Fixes
+
+* **desktop:** make Windows sysproxy and TUN elevation actually work ([d9558ac](https://github.com/MetaCubeX/metacubexd/commit/d9558ac63649d018811c478c0651e82ff3798b75))
+* **desktop:** sync panel after tray edits and free renderer on close ([726f4a7](https://github.com/MetaCubeX/metacubexd/commit/726f4a731b5b7d331ff6746719ff5c47a7e767af))
+* **ui:** keep proxy node latency tooltip inside the viewport ([1eee578](https://github.com/MetaCubeX/metacubexd/commit/1eee5782227d330ce1706e67e89ee9b8b47a14b6))
+
 ## [1.267.0](https://github.com/MetaCubeX/metacubexd/compare/v1.266.1...v1.267.0) (2026-07-08)
 
 

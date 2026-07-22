@@ -21,13 +21,19 @@ export interface UpdateCheckResult {
   releaseUrl: string
 }
 
+export interface UpdateCheckOptions {
+  apiUrl?: string
+  githubToken?: string
+}
+
 /**
  * Parse a release/package version into numeric segments. Accepts an optional
  * leading `v` and ignores any pre-release/build suffix on a segment. Returns
  * null when nothing numeric is parseable (never throws).
  */
 export function parseVersion(version: string): number[] | null {
-  const cleaned = version.trim().replace(/^v/i, '')
+  const trimmed = version.trim()
+  const cleaned = trimmed[0]?.toLowerCase() === 'v' ? trimmed.slice(1) : trimmed
   if (!cleaned) return null
   const segments = cleaned.split('.').map((s) => Number.parseInt(s, 10))
   if (segments.length === 0 || segments.some((n) => Number.isNaN(n))) {
@@ -63,10 +69,22 @@ export function isNewerVersion(latest: string, current: string): boolean {
 export async function checkForUpdates(
   fetchImpl: typeof fetch,
   currentVersion: string,
-  apiUrl = RELEASES_LATEST_API,
+  apiUrlOrOptions: string | UpdateCheckOptions = {},
 ): Promise<UpdateCheckResult> {
+  // Preserve the original third-argument API URL form for existing callers.
+  const options =
+    typeof apiUrlOrOptions === 'string'
+      ? { apiUrl: apiUrlOrOptions }
+      : apiUrlOrOptions
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+  }
+  if (options.githubToken) {
+    headers.Authorization = `Bearer ${options.githubToken}`
+  }
+  const apiUrl = options.apiUrl ?? RELEASES_LATEST_API
   const res = await fetchImpl(apiUrl, {
-    headers: { accept: 'application/vnd.github+json' },
+    headers,
     signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
   })
   if (!res.ok) {
