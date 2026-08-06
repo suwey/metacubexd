@@ -1,5 +1,61 @@
 # Changelog
 
+## [1.271.0](https://github.com/MetaCubeX/metacubexd/compare/v1.270.6...v1.271.0) (2026-08-01)
+
+
+### Features
+
+* **proxies:** add mobile scroll-to-top ([9ca5eb0](https://github.com/MetaCubeX/metacubexd/commit/9ca5eb065bfd49d8248d55754d6b7ed7deb54581))
+
+
+### Bug Fixes
+
+* **ui:** add managed rules and proxies CRUD ([#2161](https://github.com/MetaCubeX/metacubexd/issues/2161)) ([fd6fc0a](https://github.com/MetaCubeX/metacubexd/commit/fd6fc0a9ffa0413abc8f3f30e00c3975f95ae510))
+* **ui:** prevent mobile document overscroll ([a7c0497](https://github.com/MetaCubeX/metacubexd/commit/a7c049765970b91bcb17f7b46d5a38aec6805aa5))
+
+## [1.270.6](https://github.com/MetaCubeX/metacubexd/compare/v1.270.5...v1.270.6) (2026-07-27)
+
+
+### Bug Fixes
+
+* **ui:** restore mobile config access and stop proxy popover from following scroll ([ebc664f](https://github.com/MetaCubeX/metacubexd/commit/ebc664ffd93d33ebd7c0b7586f2225ddc5909623))
+
+## [1.270.5](https://github.com/MetaCubeX/metacubexd/compare/v1.270.4...v1.270.5) (2026-07-25)
+
+
+### Bug Fixes
+
+* **server:** honor DEFAULT_BACKEND_URL in the all-in-one image ([#2155](https://github.com/MetaCubeX/metacubexd/issues/2155)) ([08947ed](https://github.com/MetaCubeX/metacubexd/commit/08947ed9c1c4448d223b5cf1baa576138ec8b0f8))
+
+## [1.270.4](https://github.com/MetaCubeX/metacubexd/compare/v1.270.3...v1.270.4) (2026-07-25)
+
+
+### Bug Fixes
+
+* document DEFAULT_BACKEND_URL and seed script profile template ([#2155](https://github.com/MetaCubeX/metacubexd/issues/2155)) ([d552032](https://github.com/MetaCubeX/metacubexd/commit/d552032d7cf13c5e2352c27a7f0a5dd61a0c82a0))
+
+## [1.270.3](https://github.com/MetaCubeX/metacubexd/compare/v1.270.2...v1.270.3) (2026-07-25)
+
+
+### Bug Fixes
+
+* **agent:** wire script runner into profile store so script profiles apply ([7dc525f](https://github.com/MetaCubeX/metacubexd/commit/7dc525f149f5478ef9ac38f24f377a938edadfbd)), closes [#2153](https://github.com/MetaCubeX/metacubexd/issues/2153)
+* **deps:** revert typescript to ^6.0.3 to restore eslint/vue-tsc toolchain ([6c4a756](https://github.com/MetaCubeX/metacubexd/commit/6c4a756435ced256db4dcb06d1b1d333d1e27676))
+
+## [1.270.2](https://github.com/MetaCubeX/metacubexd/compare/v1.270.1...v1.270.2) (2026-07-24)
+
+
+### Bug Fixes
+
+* **ui:** drop obsolete @unhead/vue override that broke nuxt 4.5.0 build ([4b9f798](https://github.com/MetaCubeX/metacubexd/commit/4b9f7983a29ba798a5a3943baa5e8fff0594cb59))
+
+## [1.270.1](https://github.com/MetaCubeX/metacubexd/compare/v1.270.0...v1.270.1) (2026-07-24)
+
+
+### Bug Fixes
+
+* tray/UI sync, TUN enable reliability, latency bar alignment ([#2148](https://github.com/MetaCubeX/metacubexd/issues/2148) [#2149](https://github.com/MetaCubeX/metacubexd/issues/2149) [#2150](https://github.com/MetaCubeX/metacubexd/issues/2150)) ([173a565](https://github.com/MetaCubeX/metacubexd/commit/173a56536b5a5f15a9fa3758f0a56ea2577464d3))
+
 ## [1.270.0](https://github.com/MetaCubeX/metacubexd/compare/v1.269.1...v1.270.0) (2026-07-20)
 
 

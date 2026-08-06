@@ -621,8 +621,7 @@ describe('createControlRouter — profiles + SSE', () => {
     const deps = makeDeps()
     // Capture the registered 'log' callback so we can drive a fake log line.
     let logCb:
-      | ((l: { stream: string; line: string; ts: number }) => void)
-      | undefined
+      ((l: { stream: string; line: string; ts: number }) => void) | undefined
     deps.supervisor.on = vi.fn((event: string, cb: never) => {
       if (event === 'log') logCb = cb as never
     }) as never

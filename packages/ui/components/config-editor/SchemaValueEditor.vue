@@ -200,7 +200,7 @@ const sensitive = computed(() =>
 
     <input
       v-else
-      class="input-bordered input input-sm w-full"
+      class="input-bordered input w-full input-sm"
       :type="
         sensitive
           ? 'password'

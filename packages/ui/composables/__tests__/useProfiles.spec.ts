@@ -82,6 +82,26 @@ describe('composables/useProfiles', () => {
     expect(p.profiles.value.map((m) => m.id)).toEqual(['a', 'b'])
   })
 
+  it('refresh() seeds activeBaseId from the agent `active` flag (#2148)', async () => {
+    api.listProfiles.mockResolvedValue([
+      { ...meta('a'), active: false },
+      { ...meta('b'), active: true },
+    ])
+    const p = useProfiles()
+    await p.refresh()
+    expect(p.activeBaseId.value).toBe('b')
+  })
+
+  it('refresh() ignores merge/script profiles when seeding activeBaseId', async () => {
+    api.listProfiles.mockResolvedValue([
+      { ...mergeMeta('m'), active: true },
+      { ...meta('a'), active: false },
+    ])
+    const p = useProfiles()
+    await p.refresh()
+    expect(p.activeBaseId.value).toBeUndefined()
+  })
+
   it('create() then re-lists', async () => {
     api.createProfile.mockResolvedValue(meta('c'))
     const p = useProfiles()
@@ -266,13 +286,16 @@ describe('composables/useProfiles', () => {
   })
 
   describe('script profiles', () => {
-    it('createScript() POSTs { name, type: "script" } then re-lists', async () => {
+    it('createScript() POSTs { name, type: "script", content } with a working template then re-lists', async () => {
       api.createProfile.mockResolvedValue(scriptMeta('s'))
       const p = useProfiles()
       await p.createScript('transform')
+      // Seed a working function export so the contract is obvious — Clash
+      // Verge / FlClash's main() style errors here (#2155).
       expect(api.createProfile).toHaveBeenCalledWith({
         name: 'transform',
         type: 'script',
+        content: expect.stringContaining('export default (config)'),
       })
       expect(api.listProfiles).toHaveBeenCalled()
     })

@@ -242,9 +242,19 @@ export function createControlRouter(deps: ControlRouterDeps): App {
   }
 
   // ---- Profiles ----
+  // Attach an `active` flag to each entry so the UI can persistently mark the
+  // currently-active base profile (the store tracks activeId in state.json but
+  // the raw list never exposed it, so the badge vanished after every reload
+  // (#2148)). Derived here — never persisted into index.json.
   router.get(
     `${PREFIX}/profiles`,
-    defineEventHandler(() => profiles.list()),
+    defineEventHandler(async () => {
+      const [list, activeId] = await Promise.all([
+        profiles.list(),
+        profiles.getActiveId(),
+      ])
+      return list.map((p) => ({ ...p, active: p.id === activeId }))
+    }),
   )
   router.post(
     `${PREFIX}/profiles`,

@@ -1,3 +1,4 @@
+import type { ScriptRunner } from './script'
 import type { CreateSupervisorOptions } from './supervisor'
 import type {
   KernelManager,
@@ -10,6 +11,7 @@ import { createProfileConfigEditor } from './profile-editor'
 import { createProfileStore } from './profiles'
 import { applyActiveRefresh } from './refresh-apply'
 import { createProfileScheduler } from './scheduler'
+import { createScriptRunner } from './script'
 import { createSupervisor } from './supervisor'
 
 export const AGENT_VERSION = '0.0.0'
@@ -56,6 +58,9 @@ export type { WebdavClient, WebdavClientOptions } from './webdav'
 export type CreateAgentOptions = CreateSupervisorOptions & {
   profilesDir: string
   agentToken?: string
+  // Runs enabled 'script' profiles during composition. Defaults to a real
+  // worker-backed runner; tests inject a fake to avoid spawning workers.
+  scriptRunner?: ScriptRunner
   systemProxy?: SystemProxyController // OS proxy controller; enables 'system-proxy'
   kernelManager?: KernelManager // kernel version mgmt; enables 'kernel-version'
   tunController?: TunController // TUN mode controller; enables 'tun'
@@ -73,6 +78,10 @@ export function createAgent(opts: CreateAgentOptions) {
   const profiles = createProfileStore({
     dir: opts.profilesDir,
     activeConfigPath: opts.activeConfigPath,
+    // Without a runner, script profiles are silently skipped during compose —
+    // the user's script transforms never apply. Default to a real one so the
+    // feature works across every Runtime Form (server/desktop) out of the box.
+    scriptRunner: opts.scriptRunner ?? createScriptRunner(),
   })
   const supervisor = createSupervisor(opts)
   const profileEditor = createProfileConfigEditor({

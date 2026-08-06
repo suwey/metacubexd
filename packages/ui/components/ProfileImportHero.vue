@@ -170,18 +170,18 @@ const onClipboard = async () => {
           <input
             v-model="url"
             type="url"
-            class="input-bordered input input-sm w-full"
+            class="input-bordered input w-full input-sm"
             placeholder="https://..."
             autocomplete="off"
           />
         </label>
         <label class="flex flex-col gap-1 text-sm sm:w-40">
           <span class="text-base-content/60">{{ t('profilesName') }}</span>
-          <input v-model="name" class="input-bordered input input-sm w-full" />
+          <input v-model="name" class="input-bordered input w-full input-sm" />
         </label>
         <Button
           type="submit"
-          class="btn-sm btn-primary"
+          class="btn-primary btn-sm"
           :icon="IconDownload"
           :loading="busy"
           :disabled="!url.trim()"

@@ -265,10 +265,7 @@ export function useGithubAPI() {
 
 // API Functions
 export type EndpointCheckError =
-  | 'mixed_content'
-  | 'auth_error'
-  | 'network_error'
-  | null
+  'mixed_content' | 'auth_error' | 'network_error' | null
 
 export function checkEndpointAPI(
   url: string,

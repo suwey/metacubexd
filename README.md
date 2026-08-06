@@ -1,12 +1,44 @@
+<div align="center">
+
 # metacubexd
 
 **Mihomo Dashboard, The Official One, XD**
 
+A modern, beautiful, and fully-featured web dashboard for [Mihomo](https://github.com/MetaCubeX/mihomo) (Clash Meta).
+
+[![stars](https://img.shields.io/github/stars/metacubex/metacubexd?style=for-the-badge&color=orange)](https://github.com/metacubex/metacubexd/stargazers)
+[![downloads](https://img.shields.io/github/downloads/metacubex/metacubexd/total?style=for-the-badge)](https://github.com/metacubex/metacubexd/releases)
+[![build](https://img.shields.io/github/actions/workflow/status/metacubex/metacubexd/release.yml?style=for-the-badge)](https://github.com/metacubex/metacubexd/actions)
+[![license](https://img.shields.io/github/license/metacubex/metacubexd?style=for-the-badge)](./LICENSE)
 [![pr-closed](https://img.shields.io/github/issues-pr-closed/metacubex/metacubexd?style=for-the-badge)](https://github.com/metacubex/metacubexd/pulls)
 [![last-commit](https://img.shields.io/github/last-commit/metacubex/metacubexd?style=for-the-badge)](https://github.com/metacubex/metacubexd/commits)
-[![build](https://img.shields.io/github/actions/workflow/status/metacubex/metacubexd/release.yml?style=for-the-badge)](https://github.com/metacubex/metacubexd/actions)
-[![downloads](https://img.shields.io/github/downloads/metacubex/metacubexd/total?style=for-the-badge)](https://github.com/metacubex/metacubexd/releases)
-[![license](https://img.shields.io/github/license/metacubex/metacubexd?style=for-the-badge)](./LICENSE)
+
+**[Live Demo](https://d.metacubex.one)** · **[Download Desktop App](https://github.com/metacubex/metacubexd/releases/latest)** · **[Docker Quick Start](#3-all-in-one-server-docker)**
+
+</div>
+
+---
+
+## ⚡ Quick Start
+
+**Just want to try it?** Open **https://d.metacubex.one** and enter your mihomo address + secret.
+
+**Self-host with Docker in 30 seconds:**
+
+```shell
+docker run -d --name metacubexd -p 8080:80 ghcr.io/metacubex/metacubexd:latest
+# Open http://localhost:8080
+```
+
+**Full all-in-one (UI + kernel + agent):**
+
+```shell
+curl -O https://raw.githubusercontent.com/metacubex/metacubexd/main/docs/docker-compose.yml
+# Edit .env with your secrets, then:
+docker compose up -d
+```
+
+---
 
 ## ✨ Features
 
@@ -18,6 +50,8 @@
 - 🎨 32 selectable themes with user color overrides
 - 📱 Fully responsive design for mobile devices
 - 🌐 Seven languages: English, 简体中文, Русский, 日本語, 한국어, Français, فارسی
+- 🖥️ Cross-platform desktop app with bundled kernel
+- 🐳 All-in-one Docker server with built-in agent
 
 ## 🖼️ Preview
 
@@ -115,6 +149,22 @@ HTTPS-to-HTTP mixed-content block when the backend is local.
 docker run -d --name metacubexd -p 127.0.0.1:8080:80 \
   ghcr.io/metacubex/metacubexd:latest
 ```
+
+##### Pre-fill the backend address
+
+Set `DEFAULT_BACKEND_URL` to pre-populate the connect form (and skip the
+"no backend detected" prompt on first load). The container's entrypoint maps it
+to the Nuxt runtime config, so it ships in every served HTML response without
+rebuilding the image:
+
+```shell
+docker run -d --name metacubexd -p 127.0.0.1:8080:80 \
+  -e DEFAULT_BACKEND_URL=http://192.168.1.10:9090 \
+  ghcr.io/metacubex/metacubexd:latest
+```
+
+The URL is only a default — users can still edit it on the connect screen, and
+saved endpoints take precedence on later visits.
 
 For a safe starting point for the separately managed kernel, see the
 [minimal Mihomo configuration example](./docs/config.yaml). Review its network
@@ -291,6 +341,8 @@ services:
       CONTROL_TOKEN: 'change-me-control'
       CLASH_SECRET: 'change-me-clash'
       GITHUB_TOKEN: '' # optional read-only token for Releases API checks
+      # optional: pre-fill the connect form's backend address
+      # DEFAULT_BACKEND_URL: 'http://<host>:9090'
       CONTROL_PORT: '8080'
       CLASH_API_PORT: '9090'
       MIXED_PORT: '7890'
@@ -344,17 +396,18 @@ configuration.
 
 #### Environment variables
 
-| Variable         | Default                  | Purpose                                                                                                                              |
-| :--------------- | :----------------------- | :----------------------------------------------------------------------------------------------------------------------------------- |
-| `CONTROL_TOKEN`  | **required for control** | Bearer token for `/api/control/**`; also accepted as `?token=` for SSE. Without it, protected control routes fail closed with `503`. |
-| `CLASH_SECRET`   | _(none)_                 | Secret for mihomo's Clash API (`external-controller`). Set one and use it as the UI endpoint's **Secret**.                           |
-| `GITHUB_TOKEN`   | _(none)_                 | Optional read-only token for authenticated GitHub Releases checks. Omit it to keep anonymous requests.                               |
-| `CONTROL_PORT`   | `8080`                   | Port serving the dashboard UI + control agent API.                                                                                   |
-| `CLASH_API_PORT` | `9090`                   | Port for mihomo's Clash API + WebSocket. The UI endpoint targets this port.                                                          |
-| `MIXED_PORT`     | `7890`                   | mihomo mixed (HTTP + SOCKS) proxy port.                                                                                              |
-| `DATA_DIR`       | `/data`                  | Writable profiles, active configuration, geo data, and runtime caches.                                                               |
-| `MIHOMO_BIN`     | `/usr/local/bin/mihomo`  | Absolute path to the mihomo executable used by the server.                                                                           |
-| `TZ`             | _(container default)_    | Timezone for logs/scheduling, e.g. `Asia/Shanghai`.                                                                                  |
+| Variable              | Default                  | Purpose                                                                                                                              |
+| :-------------------- | :----------------------- | :----------------------------------------------------------------------------------------------------------------------------------- |
+| `CONTROL_TOKEN`       | **required for control** | Bearer token for `/api/control/**`; also accepted as `?token=` for SSE. Without it, protected control routes fail closed with `503`. |
+| `CLASH_SECRET`        | _(none)_                 | Secret for mihomo's Clash API (`external-controller`). Set one and use it as the UI endpoint's **Secret**.                           |
+| `GITHUB_TOKEN`        | _(none)_                 | Optional read-only token for authenticated GitHub Releases checks. Omit it to keep anonymous requests.                               |
+| `DEFAULT_BACKEND_URL` | _(none)_                 | Optional URL that pre-fills the connect form's backend address, e.g. `http://<host>:9090`. Saved endpoints still take precedence.    |
+| `CONTROL_PORT`        | `8080`                   | Port serving the dashboard UI + control agent API.                                                                                   |
+| `CLASH_API_PORT`      | `9090`                   | Port for mihomo's Clash API + WebSocket. The UI endpoint targets this port.                                                          |
+| `MIXED_PORT`          | `7890`                   | mihomo mixed (HTTP + SOCKS) proxy port.                                                                                              |
+| `DATA_DIR`            | `/data`                  | Writable profiles, active configuration, geo data, and runtime caches.                                                               |
+| `MIHOMO_BIN`          | `/usr/local/bin/mihomo`  | Absolute path to the mihomo executable used by the server.                                                                           |
+| `TZ`                  | _(container default)_    | Timezone for logs/scheduling, e.g. `Asia/Shanghai`.                                                                                  |
 
 The named volume mounts `/data`, which holds your profiles, the active config,
 and the kernel's geo / fake-ip caches. It **must be writable** — a read-only
@@ -533,6 +586,24 @@ package tests, local packaging guidance, and required desktop smoke tests.
 - [Agent manual smoke tests](./packages/agent/MANUAL.md)
 - [All-in-one server Compose example](./docs/docker-compose.yml)
 - [Example mihomo configuration](./docs/config.yaml)
+
+## ⭐ Star History
+
+<a href="https://star-history.com/#metacubex/metacubexd&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=metacubex/metacubexd&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=metacubex/metacubexd&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=metacubex/metacubexd&type=Date" width="600" />
+  </picture>
+</a>
+
+## 👥 Contributors
+
+Thanks to all the people who contribute to metacubexd!
+
+<a href="https://github.com/metacubex/metacubexd/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=metacubex/metacubexd" alt="Contributors" />
+</a>
 
 ## 📄 License
 

@@ -12,8 +12,7 @@ export interface AuthInput {
 }
 
 export type AuthResult =
-  | { ok: true }
-  | { ok: false; status: number; message: string }
+  { ok: true } | { ok: false; status: number; message: string }
 
 /**
  * Pure auth decision. Static UI (anything not under /api/control) is public.

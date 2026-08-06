@@ -22,14 +22,12 @@ function makeSupervisor(version?: string) {
       version,
     }
   })
-  const getState = vi.fn(
-    (): KernelState => ({
-      status: version ? 'running' : 'stopped',
-      externalController: '127.0.0.1:9090',
-      secret: 's',
-      version,
-    }),
-  )
+  const getState = vi.fn((): KernelState => ({
+    status: version ? 'running' : 'stopped',
+    externalController: '127.0.0.1:9090',
+    secret: 's',
+    version,
+  }))
   const supervisor = {
     getState,
     setBinaryPath,

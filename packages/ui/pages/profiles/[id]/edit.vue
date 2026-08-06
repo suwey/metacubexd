@@ -39,6 +39,11 @@ import {
   defaultForSchema,
 } from '~/utils/configSchema'
 import { controlErrorMessage } from '~/utils/controlError'
+import {
+  PROXY_GROUP_TYPES,
+  PROXY_PROTOCOL_FIELDS,
+  PROXY_TYPES,
+} from '~/utils/routingResources'
 
 type ResourceKind = 'proxy' | 'provider' | 'group' | 'rule-provider'
 type LooseObject = Record<string, any>
@@ -106,47 +111,6 @@ const SETTINGS_SECTIONS = [
   'sniffer',
   'clash-for-android',
 ]
-const PROXY_TYPES = [
-  'ss',
-  'ssr',
-  'http',
-  'socks5',
-  'vmess',
-  'vless',
-  'trojan',
-  'hysteria2',
-  'tuic',
-  'wireguard',
-  'ssh',
-  'snell',
-  'anytls',
-  'direct',
-  'reject',
-  'pass',
-]
-const GROUP_TYPES = [
-  'select',
-  'url-test',
-  'fallback',
-  'load-balance',
-  'relay',
-  'smart',
-]
-const PROTOCOL_FIELDS: Record<string, string[]> = {
-  ss: ['cipher', 'password', 'udp', 'udp-over-tcp'],
-  ssr: ['cipher', 'password', 'obfs', 'protocol'],
-  http: ['username', 'password', 'tls', 'skip-cert-verify'],
-  socks5: ['username', 'password', 'tls', 'udp'],
-  vmess: ['uuid', 'alterId', 'cipher', 'tls', 'network', 'servername'],
-  vless: ['uuid', 'flow', 'tls', 'network', 'servername'],
-  trojan: ['password', 'tls', 'sni', 'skip-cert-verify'],
-  hysteria2: ['password', 'sni', 'skip-cert-verify', 'up', 'down'],
-  tuic: ['uuid', 'password', 'sni', 'skip-cert-verify'],
-  wireguard: ['private-key', 'public-key', 'ip', 'mtu'],
-  ssh: ['username', 'password', 'private-key', 'host-key-algorithms'],
-  snell: ['psk', 'version', 'obfs-opts'],
-  anytls: ['password', 'client-fingerprint', 'sni', 'skip-cert-verify'],
-}
 
 const dirty = computed(
   () =>
@@ -203,7 +167,7 @@ const commonResourceFields = computed(() => {
     'type',
     'server',
     'port',
-    ...(PROTOCOL_FIELDS[String(resourceDraft.value.type)] ?? []),
+    ...(PROXY_PROTOCOL_FIELDS[String(resourceDraft.value.type)] ?? []),
   ]
 })
 
@@ -705,7 +669,7 @@ if (import.meta.client) {
             {{ t('visualEditorPreview') }}
           </Button>
           <Button
-            class="btn-sm btn-primary"
+            class="btn-primary btn-sm"
             :icon="IconDeviceFloppy"
             :loading="applying"
             :disabled="!dirty || Boolean(yamlError) || hasDocumentErrors"
@@ -732,7 +696,7 @@ if (import.meta.client) {
           <p class="text-sm text-base-content/60">{{ conflict.reason }}</p>
           <div class="mt-2 flex flex-wrap gap-2">
             <Button
-              class="btn-xs btn-warning"
+              class="btn-warning btn-xs"
               @click="keepLocal(conflict as any, index)"
               >{{ t('visualEditorKeepLocal') }}</Button
             >
@@ -1017,7 +981,7 @@ if (import.meta.client) {
               class="flex items-center gap-1 rounded-lg bg-base-100 p-2"
             >
               <input
-                class="input-bordered input input-xs min-w-0 flex-1 font-mono"
+                class="input-bordered input min-w-0 flex-1 font-mono input-xs"
                 :value="rule"
                 @change="
                   updateRule(index, ($event.target as HTMLInputElement).value)
@@ -1105,7 +1069,7 @@ if (import.meta.client) {
         <Button class="btn-ghost btn-sm" @click="sectionModal?.close()">{{
           t('cancel')
         }}</Button>
-        <Button class="btn-sm btn-primary" @click="saveSection">{{
+        <Button class="btn-primary btn-sm" @click="saveSection">{{
           t('profilesSave')
         }}</Button>
       </template>
@@ -1132,7 +1096,7 @@ if (import.meta.client) {
                 v-for="option in resourceKind === 'proxy'
                   ? PROXY_TYPES
                   : resourceKind === 'group'
-                    ? GROUP_TYPES
+                    ? PROXY_GROUP_TYPES
                     : ['http', 'file', 'inline']"
                 :key="option"
                 :value="option"
@@ -1210,7 +1174,7 @@ if (import.meta.client) {
         <Button class="btn-ghost btn-sm" @click="resourceModal?.close()">{{
           t('cancel')
         }}</Button>
-        <Button class="btn-sm btn-primary" @click="saveResource">{{
+        <Button class="btn-primary btn-sm" @click="saveResource">{{
           t('profilesSave')
         }}</Button>
       </template>
@@ -1240,15 +1204,14 @@ if (import.meta.client) {
         </div>
         <pre
           class="max-h-[55vh] overflow-auto rounded-xl bg-base-300 p-3 text-xs"
-          >{{ preview.composedYaml }}</pre
-        >
+          >{{ preview.composedYaml }}</pre>
       </template>
       <template #actions>
         <Button class="btn-ghost btn-sm" @click="previewModal?.close()">{{
           t('cancel')
         }}</Button>
         <Button
-          class="btn-sm btn-primary"
+          class="btn-primary btn-sm"
           :loading="applying"
           :disabled="
             Boolean(

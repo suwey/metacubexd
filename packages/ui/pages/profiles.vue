@@ -12,6 +12,7 @@ import {
   IconTrash,
 } from '@tabler/icons-vue'
 import { toast } from 'vue-sonner'
+import { onControlInvalidate } from '~/composables/useControlSync'
 import { controlErrorMessage } from '~/utils/controlError'
 
 const { t, locale } = useI18n()
@@ -90,6 +91,14 @@ onMounted(() => {
         description: controlErrorMessage(err),
       })
     })
+})
+
+// Re-sync the active marker + list when a profile is activated from outside the
+// SPA (tray submenu, AIO scheduler). desktop-sync invalidates vue-query caches,
+// but this list lives in a local ref, so reload it on backend invalidate. A
+// no-op on web builds (no bridge). (#2148)
+onControlInvalidate(() => {
+  if (hasFeature('profiles')) void refresh()
 })
 
 // Uniform failure feedback for the actions whose composable methods rethrow
@@ -439,7 +448,7 @@ const onCopyShareUrl = async () => {
           <div class="mt-3 flex flex-wrap gap-2">
             <Button
               v-if="hasFeature('visual-config-editor')"
-              class="btn-xs btn-primary"
+              class="btn-primary btn-xs"
               :icon="IconBraces"
               @click="router.push(`/profiles/${p.id}/edit`)"
             >
@@ -464,7 +473,7 @@ const onCopyShareUrl = async () => {
             </Button>
             <Button
               v-if="p.type === 'remote'"
-              class="btn-xs btn-success"
+              class="btn-success btn-xs"
               :icon="IconRefresh"
               :loading="isBusy(`refresh-apply:${p.id}`)"
               @click="onRefreshAndApply(p.id)"
@@ -481,7 +490,7 @@ const onCopyShareUrl = async () => {
             </Button>
             <Button
               v-if="p.id !== activeBaseId"
-              class="btn-xs btn-success"
+              class="btn-success btn-xs"
               :icon="IconPlayerPlay"
               :loading="isBusy(`activate:${p.id}`)"
               @click="onActivate(p.id)"
@@ -497,7 +506,7 @@ const onCopyShareUrl = async () => {
               {{ t('profilesShare') }}
             </Button>
             <Button
-              class="btn-xs btn-error"
+              class="btn-error btn-xs"
               :icon="IconTrash"
               :loading="isBusy(`delete:${p.id}`)"
               @click="onRemove(p.id)"
@@ -531,7 +540,7 @@ const onCopyShareUrl = async () => {
               />
             </label>
             <Button
-              class="btn-sm btn-primary"
+              class="btn-primary btn-sm"
               :icon="IconPlus"
               :loading="isBusy('create')"
               @click="onCreate"
@@ -563,7 +572,7 @@ const onCopyShareUrl = async () => {
                   />
                 </label>
                 <Button
-                  class="btn-sm btn-primary"
+                  class="btn-primary btn-sm"
                   :icon="IconPlus"
                   :loading="isBusy('createMerge')"
                   @click="onCreateMerge"
@@ -621,7 +630,7 @@ const onCopyShareUrl = async () => {
                     {{ t('profilesEdit') }}
                   </Button>
                   <Button
-                    class="btn-xs btn-error"
+                    class="btn-error btn-xs"
                     :icon="IconTrash"
                     :loading="isBusy(`delete:${m.id}`)"
                     @click="onRemove(m.id)"
@@ -659,7 +668,7 @@ const onCopyShareUrl = async () => {
                   />
                 </label>
                 <Button
-                  class="btn-sm btn-primary"
+                  class="btn-primary btn-sm"
                   :icon="IconPlus"
                   :loading="isBusy('createScript')"
                   @click="onCreateScript"
@@ -705,7 +714,7 @@ const onCopyShareUrl = async () => {
                     {{ t('profilesEdit') }}
                   </Button>
                   <Button
-                    class="btn-xs btn-error"
+                    class="btn-error btn-xs"
                     :icon="IconTrash"
                     :loading="isBusy(`delete:${s.id}`)"
                     @click="onRemove(s.id)"
@@ -753,7 +762,7 @@ const onCopyShareUrl = async () => {
 
         <div class="mt-3 flex flex-wrap items-center gap-2">
           <Button
-            class="btn-sm btn-primary"
+            class="btn-primary btn-sm"
             :loading="isBusy('editor-save')"
             @click="onSave"
           >
@@ -809,7 +818,7 @@ const onCopyShareUrl = async () => {
 
         <div class="flex w-full items-center gap-2">
           <input
-            class="input-bordered input input-sm flex-1 font-mono text-xs"
+            class="input-bordered input flex-1 font-mono text-xs input-sm"
             :value="shareUrl"
             readonly
             :aria-label="t('profilesShareUrl')"

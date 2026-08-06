@@ -163,8 +163,7 @@ main().then(
 `
 
 type WorkerReply =
-  | { ok: true; result: unknown }
-  | { ok: false; message: string }
+  { ok: true; result: unknown } | { ok: false; message: string }
 
 function runInWorker(timeoutMs: number): ScriptRun {
   return (code, input) =>

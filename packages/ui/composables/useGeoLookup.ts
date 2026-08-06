@@ -71,8 +71,7 @@ function parseIPSB(data: Record<string, unknown>): GeoInfo {
 
 function parseIPWhoIs(data: Record<string, unknown>): GeoInfo {
   const connection = data.connection as
-    | { asn?: number; org?: string }
-    | undefined
+    { asn?: number; org?: string } | undefined
   return {
     countryCode: data.country_code as string | undefined,
     country: data.country as string | undefined,
@@ -84,8 +83,7 @@ function parseIPWhoIs(data: Record<string, unknown>): GeoInfo {
 
 function parseIPAPI(data: Record<string, unknown>): GeoInfo {
   const location = data.location as
-    | { country_code?: string; country?: string; city?: string }
-    | undefined
+    { country_code?: string; country?: string; city?: string } | undefined
   const asn = data.asn as { asn?: number; org?: string } | undefined
   return {
     countryCode: location?.country_code,

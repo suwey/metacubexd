@@ -241,7 +241,7 @@ const resetHotkeys = async () => {
       </p>
       <div class="mt-3 flex flex-wrap gap-2">
         <Button
-          class="btn-sm btn-primary"
+          class="btn-primary btn-sm"
           :disabled="!hotkeysDirty"
           :loading="hotkeysSaving"
           @click="saveHotkeys"
