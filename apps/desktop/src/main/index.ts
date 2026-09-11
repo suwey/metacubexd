@@ -82,6 +82,7 @@ import { readSysProxyBypass, writeSysProxyBypass } from './sysproxy-config'
 import { createSysproxyGuard } from './sysproxy-guard'
 import { createTrafficPoller, formatTraySpeed } from './traffic-poller'
 import { createTray, trayIconPath } from './tray'
+import { createTunConfigWriter } from './tun-config'
 import { createTunRuntime } from './tun-runtime'
 import { checkForUpdates } from './update-check'
 import { registerWindowControls } from './window-controls'
@@ -142,14 +143,18 @@ const helperElevate = createHelperElevate({
  * to and the helper reads as root — distinct from the app's own user-owned copy
  * under userData (helper-secret.txt). It is never world-readable.
  */
-function resolveHelperPaths(userData: string): {
+function resolveHelperPaths(): {
   socketPath: string
   secretFile: string
 } {
   if (process.platform === 'win32') {
     return {
       socketPath: `\\\\.\\pipe\\${HELPER_SERVICE_NAME}`,
-      secretFile: join(userData, 'helper.secret'),
+      secretFile: join(
+        process.env.ProgramData || 'C:\\ProgramData',
+        HELPER_SERVICE_NAME,
+        'helper.secret',
+      ),
     }
   }
   if (process.platform === 'darwin') {
@@ -451,7 +456,7 @@ async function boot(): Promise<void> {
   // spawn lives behind these injected deps — boot() never elevates, installs a
   // service, or spawns a privileged process; the privileged spawn happens inside
   // the already-installed root/admin helper, reached over a local socket.
-  const tunPaths = resolveHelperPaths(userData)
+  const tunPaths = resolveHelperPaths()
   // Where the resolved TUN mode is persisted for the cold-start prompt.
   const tunStatePath = join(userData, 'tun-state.json')
   // Per-install shared secret stamped onto every helper IPC request. Persisted so
@@ -494,12 +499,10 @@ async function boot(): Promise<void> {
         onDisconnect,
       }),
     supervisor: agent.supervisor,
-    setSection: async (key, value) => {
-      const activeId = await agent!.profiles.getActiveId()
-      if (!activeId)
-        throw new TunPreconditionError('tun: no active profile to edit')
-      await agent!.profiles.setSection(activeId, key, value)
-    },
+    setSection: createTunConfigWriter({
+      profiles: agent.profiles,
+      activeConfigPath: paths.activeConfigPath,
+    }),
     // Gate enable() on an active profile BEFORE the controller tears the kernel
     // down. injectTun (setSection above) needs an active profile to write the
     // `tun:` block into; without it the enable used to fail mid-sequence (after
