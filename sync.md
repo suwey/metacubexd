@@ -20,7 +20,7 @@
 
 ### 2. README 的安卓打包说明
 
-"Embed in an Android App (Bundled Assets)" 一节：AAPT 会剥掉下划线开头的目录，打包时需把 `_nuxt`→`nuxt`、`_fonts`→`fonts` 改名复制进 assets，应用运行时复制到文件系统时再改回。上游 README 有变动时，这一节要保留或重新插入。
+"Embed in an Android App (Bundled Assets)" 一节：AAPT 会剥掉下划线开头的目录，打包时需把 `_nuxt` → `nuxt` 改名复制进 assets，应用运行时复制到文件系统时再改回。自托管字体由 @nuxt/fonts 输出在 `_nuxt/fonts/` 内（旧版构建曾输出独立顶层 `_fonts/`，若存在则一并改名），shell 侧用遍历 `_*` 目录的通用改名循环。上游 README 有变动时，这一节要保留或重新插入。
 
 ### 3. release 检查地址指向 fork
 

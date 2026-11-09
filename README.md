@@ -178,11 +178,14 @@ adjustment before copying into `app/src/main/assets/ui/`.
 
 **The problem:** Android AAPT silently strips files and directories whose
 names start with `_` during APK packaging. The Nuxt build emits `_nuxt/`
-(chunk assets) and `_fonts/` (self-hosted web fonts), so these directories
-would be missing from the installed APK.
+(chunk assets; the self-hosted web fonts live inside it under
+`_nuxt/fonts/`), so it would be missing from the installed APK. Older
+builds also emitted a separate top-level `_fonts/` — rename it too if
+present.
 
-**The fix:** Rename `_nuxt` → `nuxt` and `_fonts` → `fonts` in the assets
-copy. The app's runtime code then renames them back when copying assets to
+**The fix:** Rename every underscore-prefixed top-level directory in the
+assets copy (`_nuxt` → `nuxt`, and `_fonts` → `fonts` when it exists).
+The app's runtime code then renames them back when copying assets to
 the device filesystem before serving.
 
 ```shell
@@ -194,8 +197,9 @@ SRC=packages/ui/.output/public
 DST=app/src/main/assets/ui
 rm -rf "$DST"
 cp -r "$SRC" "$DST"
-mv "$DST/_nuxt" "$DST/nuxt"
-mv "$DST/_fonts" "$DST/fonts"
+for d in "$DST"/_*; do
+  mv "$d" "$DST/$(basename "$d" | sed 's/^_//')"
+done
 ```
 
 The app should include a `copyUiAssets()` step that reverses the rename
