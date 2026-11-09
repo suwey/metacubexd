@@ -16,7 +16,8 @@
 - config 页的"编辑配置文件"Modal：读当前配置文本 → Monaco 编辑 → 保存写回。
 - Monaco 编辑器支持 `language="toml"`（用 ini 语法高亮渲染 TOML 配置）；monaco 初始化处需导入 ini.contribution；编辑器 model URI 用 `inmemory://config/anywhere.toml`（避免被 yaml schema 校验劫持）。
 - 对应内核 API：GET / PUT `configs/file`（经 useRequest，指向内核地址）。
-- i18n 共 7 个键：`uploadConfigHint` `applyingConfig` `configFileApplied` `configFileApplyFailed` `configFileEmpty` `editConfigFile` `configFileLoadFailed`，en/ja/zh/ko/fr/fa 均需存在（插入在 `remoteConfigURLPlaceholder` 与 `shortcuts` 之间的位置即可）。
+- 内核配置保存/读取失败的结构化错误：响应体 `{ error: <code>, detail }`，9 个已知 code（`outbound_missing_tag` `outbound_duplicate_tag` `urltest_child_not_found` `config_parse_error` `config_read_error` `config_write_error` `no_config_path` `force_required` `restart_failed`）经 i18n `errors.<code>`（`{detail}` 插值）翻译；未知 code 或非内核错误回退通用提示（`utils/configSaveError.ts` 解析 + config.vue 的 `configFileErrorMessage`）。
+- i18n：配置编辑 7 个键（`uploadConfigHint` `applyingConfig` `configFileApplied` `configFileApplyFailed` `configFileEmpty` `editConfigFile` `configFileLoadFailed`）+ 上述 `errors` 块 9 个键，en/ja/zh/ko/fr/fa 均需存在（插入在 `remoteConfigURLPlaceholder` 与 `shortcuts` 之间的位置即可）。
 
 ### 2. README 的安卓打包说明
 

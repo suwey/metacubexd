@@ -346,6 +346,17 @@
   "configFileEmpty": "設定ファイルが空です",
   "editConfigFile": "設定ファイルを編集",
   "configFileLoadFailed": "設定ファイルの読み込みに失敗しました",
+  "errors": {
+    "outbound_missing_tag": "[[outbounds]] エントリにタグがありません: {detail}",
+    "outbound_duplicate_tag": "outbound のタグが重複しています: {detail}",
+    "urltest_child_not_found": "urltest が未定義の outbound を参照しています: {detail}",
+    "config_parse_error": "設定の解析に失敗しました: {detail}",
+    "config_read_error": "設定ファイルの読み取りに失敗しました: {detail}",
+    "config_write_error": "設定ファイルの書き込みに失敗しました: {detail}",
+    "no_config_path": "設定ファイルのパスが未設定です: {detail}",
+    "force_required": "この変更には強制リロードが必要です: {detail}",
+    "restart_failed": "カーネルの再起動に失敗しました: {detail}"
+  },
   "shortcuts": {
     "title": "キーボードショートカット",
     "category": {

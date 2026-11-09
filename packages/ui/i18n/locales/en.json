@@ -346,6 +346,17 @@
   "configFileEmpty": "Config file is empty",
   "editConfigFile": "Edit Config File",
   "configFileLoadFailed": "Failed to load config file",
+  "errors": {
+    "outbound_missing_tag": "An [[outbounds]] entry is missing its tag: {detail}",
+    "outbound_duplicate_tag": "Duplicate outbound tag: {detail}",
+    "urltest_child_not_found": "urltest references an outbound that is not defined: {detail}",
+    "config_parse_error": "Failed to parse config: {detail}",
+    "config_read_error": "Failed to read config file: {detail}",
+    "config_write_error": "Failed to write config file: {detail}",
+    "no_config_path": "No config file path available: {detail}",
+    "force_required": "This change requires a forced reload: {detail}",
+    "restart_failed": "Kernel restart failed: {detail}"
+  },
   "shortcuts": {
     "title": "Keyboard Shortcuts",
     "category": {

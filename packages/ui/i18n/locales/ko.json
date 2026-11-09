@@ -346,6 +346,17 @@
   "configFileEmpty": "설정 파일이 비어 있습니다",
   "editConfigFile": "설정 파일 편집",
   "configFileLoadFailed": "설정 파일을 불러오지 못했습니다",
+  "errors": {
+    "outbound_missing_tag": "[[outbounds]] 항목에 태그가 없습니다: {detail}",
+    "outbound_duplicate_tag": "outbound 태그가 중복됩니다: {detail}",
+    "urltest_child_not_found": "urltest가 정의되지 않은 outbound를 참조합니다: {detail}",
+    "config_parse_error": "설정 파일 구문 분석에 실패했습니다: {detail}",
+    "config_read_error": "설정 파일을 읽지 못했습니다: {detail}",
+    "config_write_error": "설정 파일을 쓰지 못했습니다: {detail}",
+    "no_config_path": "설정 파일 경로가 설정되지 않았습니다: {detail}",
+    "force_required": "이 변경에는 강제 리로드가 필요합니다: {detail}",
+    "restart_failed": "커널 재시작에 실패했습니다: {detail}"
+  },
   "shortcuts": {
     "title": "키보드 단축키",
     "category": {

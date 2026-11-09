@@ -14,8 +14,9 @@ import {
   tunStackOptions,
   useTunConfig,
 } from '~/composables/useTunConfig'
+import { configSaveErrorBody } from '~/utils/configSaveError'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const nodeRecommendationStore = useNodeRecommendationStore()
 
 useHead({ title: computed(() => t('config')) })
@@ -224,7 +225,7 @@ async function applyConfigFile(file: File) {
     toast.success(t('configFileApplied'))
   } catch (error) {
     console.error('Failed to apply config file:', error)
-    toast.error(t('configFileApplyFailed'))
+    toast.error(configFileErrorMessage(error, 'configFileApplyFailed'))
   } finally {
     isUploadingConfig.value = false
     if (configFileInput.value) configFileInput.value.value = ''
@@ -260,6 +261,19 @@ const editorContent = ref('')
 const isEditorLoading = ref(false)
 const isEditorSaving = ref(false)
 
+// The kernel answers failed config applies/reads with `{ error: <code>,
+// detail }`. Known codes translate via errors.<code> with {detail} (validator
+// wording for registry errors, line/col for parse errors); an unknown code or
+// a non-kernel failure falls back to the caller's generic toast so raw keys
+// never leak into the UI.
+function configFileErrorMessage(error: unknown, fallbackKey: string): string {
+  const body = configSaveErrorBody(error)
+  if (body && te(`errors.${body.code}`)) {
+    return t(`errors.${body.code}`, { detail: body.detail })
+  }
+  return t(fallbackKey)
+}
+
 async function openConfigEditor() {
   configEditorModalRef.value?.open()
   isEditorLoading.value = true
@@ -272,7 +286,7 @@ async function openConfigEditor() {
     ).text()
   } catch (error) {
     console.error('Failed to fetch config file:', error)
-    toast.error(t('configFileLoadFailed'))
+    toast.error(configFileErrorMessage(error, 'configFileLoadFailed'))
     configEditorModalRef.value?.close()
   } finally {
     isEditorLoading.value = false
@@ -295,7 +309,7 @@ async function saveConfigEditor() {
     configEditorModalRef.value?.close()
   } catch (error) {
     console.error('Failed to save config file:', error)
-    toast.error(t('configFileApplyFailed'))
+    toast.error(configFileErrorMessage(error, 'configFileApplyFailed'))
   } finally {
     isEditorSaving.value = false
   }

@@ -346,6 +346,17 @@
   "configFileEmpty": "配置文件为空",
   "editConfigFile": "编辑配置文件",
   "configFileLoadFailed": "加载配置文件失败",
+  "errors": {
+    "outbound_missing_tag": "[[outbounds]] 条目缺少 tag：{detail}",
+    "outbound_duplicate_tag": "出站 tag 重复：{detail}",
+    "urltest_child_not_found": "urltest 引用了未定义的出站节点：{detail}",
+    "config_parse_error": "配置解析失败：{detail}",
+    "config_read_error": "读取配置文件失败：{detail}",
+    "config_write_error": "写入配置文件失败：{detail}",
+    "no_config_path": "未配置配置文件路径：{detail}",
+    "force_required": "该变更需要强制重载：{detail}",
+    "restart_failed": "内核重启失败：{detail}"
+  },
   "shortcuts": {
     "title": "键盘快捷键",
     "category": {

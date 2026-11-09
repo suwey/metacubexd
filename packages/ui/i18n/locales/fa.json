@@ -346,6 +346,17 @@
   "configFileEmpty": "فایل پیکربندی خالی است",
   "editConfigFile": "ویرایش فایل پیکربندی",
   "configFileLoadFailed": "بارگذاری فایل پیکربندی ناموفق بود",
+  "errors": {
+    "outbound_missing_tag": "ورودی [[outbounds]] فاقد tag است: {detail}",
+    "outbound_duplicate_tag": "tag خارج‌برنده تکراری است: {detail}",
+    "urltest_child_not_found": "urltest به outbound تعریف‌نشده ارجاع می‌دهد: {detail}",
+    "config_parse_error": "تجزیه پیکربندی ناموفق بود: {detail}",
+    "config_read_error": "خواندن فایل پیکربندی ناموفق بود: {detail}",
+    "config_write_error": "نوشتن فایل پیکربندی ناموفق بود: {detail}",
+    "no_config_path": "مسیر فایل پیکربندی در دسترس نیست: {detail}",
+    "force_required": "این تغییر به بازگذاری اجباری نیاز دارد: {detail}",
+    "restart_failed": "راه‌اندازی مجدد هسته ناموفق بود: {detail}"
+  },
   "shortcuts": {
     "title": "میانبرهای صفحه‌کلید",
     "category": {

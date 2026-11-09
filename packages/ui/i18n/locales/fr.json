@@ -346,6 +346,17 @@
   "configFileEmpty": "Le fichier de configuration est vide",
   "editConfigFile": "Modifier le fichier de configuration",
   "configFileLoadFailed": "Échec du chargement du fichier de configuration",
+  "errors": {
+    "outbound_missing_tag": "Une entrée [[outbounds]] n'a pas de tag : {detail}",
+    "outbound_duplicate_tag": "Tag d'outbound en double : {detail}",
+    "urltest_child_not_found": "urltest référence un outbound non défini : {detail}",
+    "config_parse_error": "Échec de l'analyse de la configuration : {detail}",
+    "config_read_error": "Échec de la lecture du fichier de configuration : {detail}",
+    "config_write_error": "Échec de l'écriture du fichier de configuration : {detail}",
+    "no_config_path": "Aucun chemin de fichier de configuration disponible : {detail}",
+    "force_required": "Cette modification nécessite un rechargement forcé : {detail}",
+    "restart_failed": "Échec du redémarrage du noyau : {detail}"
+  },
   "shortcuts": {
     "title": "Raccourcis clavier",
     "category": {
