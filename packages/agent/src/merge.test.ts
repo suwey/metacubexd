@@ -10,6 +10,23 @@ function merged(base: string, ...overlays: string[]): Record<string, unknown> {
 }
 
 describe('mergeConfigs', () => {
+  it('keeps prototype-named map keys as inert own data through repeated overlays', () => {
+    const out = merged(
+      'dns: {}\n',
+      'dns:\n  __proto__:\n    mcxdPolluted: inert\n  constructor: first\n',
+      'dns:\n  __proto__:\n    retained: true\n  constructor: second\n',
+    )
+    const dns = out.dns as Record<string, unknown>
+    expect(Object.hasOwn(dns, '__proto__')).toBe(true)
+    expect(Object.getOwnPropertyDescriptor(dns, '__proto__')?.value).toEqual({
+      mcxdPolluted: 'inert',
+      retained: true,
+    })
+    expect(dns.constructor).toBe('second')
+    expect(Object.hasOwn(Object.prototype, 'mcxdPolluted')).toBe(false)
+    expect(Object.hasOwn(dns, 'undefined')).toBe(false)
+  })
+
   it('deep-merges plain objects recursively', () => {
     const base = `
 dns:

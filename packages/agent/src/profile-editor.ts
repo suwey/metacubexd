@@ -9,16 +9,17 @@ import type {
   ProfileMeta,
   ProfileStore,
 } from './types'
-import { rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
 import {
   applyPatch,
   diffDocument,
   openDocument,
 } from '@metacubexd/config-editor'
+import { rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import {
   ConfigPatchConflictError,
   parseVisualPatch,
+  visualOverlayName,
   visualPatchContent,
 } from './merge'
 
@@ -254,7 +255,7 @@ export function createProfileConfigEditor(
           })
         } else {
           const created = await profiles.create({
-            name: `${before.profile.name} · Visual overrides`,
+            name: visualOverlayName(before.profile.name),
             type: 'merge',
             content,
             baseProfileId: id,

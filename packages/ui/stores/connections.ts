@@ -78,6 +78,11 @@ export const useConnectionsStore = defineStore('connections', () => {
   >()
   let hasInitializedSession = false
 
+  const resetDataUsageBaseline = () => {
+    connectionLastData.clear()
+    hasInitializedSession = false
+  }
+
   // Helper functions
   const restructRawMsgToConnection = (
     connections: ConnectionRawMessage[],
@@ -129,10 +134,11 @@ export const useConnectionsStore = defineStore('connections', () => {
       }
     }
 
-    // Trim to latest window
+    // merged is newest first (active, then just closed, then older closed),
+    // so trim from the end to drop the oldest closed connections.
     const limit = activeConns.length + CONNECTIONS_TABLE_MAX_CLOSED_ROWS
     allConnections.value =
-      limit > 0 && merged.length > limit ? merged.slice(-limit) : merged
+      limit > 0 && merged.length > limit ? merged.slice(0, limit) : merged
   }
 
   const diffClosedConnections = (
@@ -142,9 +148,8 @@ export const useConnectionsStore = defineStore('connections', () => {
 
   // Reset connection tracking data
   const resetConnectionTracking = () => {
-    connectionLastData.clear()
+    resetDataUsageBaseline()
     baselineTotals.value = { upload: 0, download: 0 }
-    hasInitializedSession = false
     console.log('[Data Usage] Connection tracking reset due to service restart')
   }
 
@@ -152,12 +157,12 @@ export const useConnectionsStore = defineStore('connections', () => {
   const clearDataUsage = async () => {
     // Clear in-memory tracking synchronously BEFORE awaiting IndexedDB. On the
     // service-restart path in updateFromWsMsg this is called without `await`,
-    // so deferring connectionLastData.clear() until after the await would wipe
-    // the fresh baseline that updateDataUsage rebuilds in the same tick —
+    // so deferring the baseline reset until after the await would wipe the
+    // fresh baseline that updateDataUsage rebuilds in the same tick —
     // making the next message count each connection's cumulative total as a
     // single delta.
     logBuffer.clear()
-    connectionLastData.clear()
+    resetDataUsageBaseline()
     await db.clearAll()
   }
 
@@ -201,25 +206,23 @@ export const useConnectionsStore = defineStore('connections', () => {
     lastUploadTotal = currentUploadTotal
     lastDownloadTotal = currentDownloadTotal
 
-    if (!rawConns || rawConns.length === 0) return
+    if (!rawConns) return
+
+    // An empty snapshot still starts the tracking session, so connections
+    // appearing in a later snapshot include their initial bytes.
+    if (configStore.enableDataUsageTracking) {
+      updateDataUsage(rawConns)
+    }
+
+    const activeIds = new Set(rawConns.map((c) => c.id))
+    cleanupInactiveConnections(activeIds)
+
+    if (rawConns.length === 0) return
 
     const activeConns = restructRawMsgToConnection(
       rawConns,
       activeConnections.value,
     )
-
-    // Build the active-id set once and reuse it for both cleanup and the
-    // closed-connection diff instead of rebuilding it in each helper.
-    const activeIds = new Set(activeConns.map((c) => c.id))
-
-    // Data usage tracking is opt-out: skip the per-connection diff + IndexedDB
-    // buffering entirely when the user has disabled it.
-    if (configStore.enableDataUsageTracking) {
-      updateDataUsage(activeConns)
-    }
-
-    // Cleanup inactive connections
-    cleanupInactiveConnections(activeIds)
 
     // Merge all connections
     mergeAllConnections(activeConns)
@@ -228,15 +231,25 @@ export const useConnectionsStore = defineStore('connections', () => {
       const closedConns = diffClosedConnections(activeIds, allConnections.value)
       activeConnections.value = activeConns
       closedConnections.value = closedConns.slice(
-        -CONNECTIONS_TABLE_MAX_CLOSED_ROWS,
+        0,
+        CONNECTIONS_TABLE_MAX_CLOSED_ROWS,
       )
     }
   }
 
   // Update data usage
-  const updateDataUsage = (connections: Connection[]) => {
+  const updateDataUsage = (connections: ConnectionRawMessage[]) => {
     if (!hasInitializedSession) {
       hasInitializedSession = true
+      // These counters may include traffic from before the dashboard opened.
+      // Establish a baseline instead of attributing their totals to now.
+      connections.forEach((conn) => {
+        connectionLastData.set(conn.id, {
+          upload: conn.upload || 0,
+          download: conn.download || 0,
+        })
+      })
+      return
     }
 
     const now = Date.now()
@@ -318,17 +331,33 @@ export const useConnectionsStore = defineStore('connections', () => {
   // backend whose cumulative totals are lower would otherwise look like a
   // kernel restart and trigger clearDataUsage() + clearChartHistory(),
   // destroying the user's accumulated usage history. On endpoint change reset
-  // only the restart-detection baselines; the new backend's first message then
-  // establishes a fresh baseline without wiping history or the chart.
+  // the restart-detection and per-connection baselines. The new backend's
+  // first message establishes a baseline without wiping persisted usage. Clear
+  // visible connections too, so they cannot appear to belong to the new host.
   const endpointStore = useEndpointStore()
   watch(
-    () => endpointStore.selectedEndpoint,
+    () => [
+      endpointStore.selectedEndpoint,
+      endpointStore.currentEndpoint?.url,
+      endpointStore.currentEndpoint?.secret,
+    ],
     () => {
       lastUploadTotal = 0
       lastDownloadTotal = 0
-      connectionLastData.clear()
+      resetDataUsageBaseline()
+      latestConnectionMsg.value = null
+      allConnections.value = []
+      activeConnections.value = []
+      closedConnections.value = []
     },
+    { flush: 'sync' },
   )
+
+  // Reset synchronously even if tracking is toggled off and on between
+  // snapshots, so traffic transferred while disabled is never backfilled.
+  watch(() => configStore.enableDataUsageTracking, resetDataUsageBaseline, {
+    flush: 'sync',
+  })
 
   return {
     allConnections,

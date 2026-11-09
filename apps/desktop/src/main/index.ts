@@ -24,11 +24,7 @@ import {
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
-import {
-  createAgent,
-  createProfileScheduler,
-  TunPreconditionError,
-} from '@metacubexd/agent'
+import { createAgent, TunPreconditionError } from '@metacubexd/agent'
 import {
   app,
   BrowserWindow,
@@ -72,6 +68,7 @@ import { createLogFileSink } from './log-file'
 import { createLoginItemController } from './login-item'
 import { createKernelCrashWatcher, createNotifier } from './notifier'
 import { bootstrapDataDir } from './paths'
+import { createDesktopProfileScheduler } from './profile-scheduler'
 import { buildProxyEnvCommand } from './proxy-env'
 import { makeToken } from './secrets'
 import { createShutdownOrchestrator } from './shutdown-orchestrator'
@@ -94,11 +91,11 @@ import {
   saveWindowState,
 } from './window-state'
 
-// ESM has no CommonJS `__dirname`; electron-vite bundles main as ESM under
-// `"type": "module"`, so derive it from import.meta.url (the bundled
-// out/main/index.js location). All `join(__dirname, ...)` paths below resolve
-// exactly as the CJS equivalent did, in both dev and packaged (asar) layouts.
-const __dirname = fileURLToPath(new URL('.', import.meta.url))
+// ESM has no CommonJS `__dirname`, and electron-vite's `vite:esm-shim` plugin
+// injects a top-level `__dirname` shim into ESM chunks, so use a distinct
+// identifier derived from import.meta.url (the bundled out/main/index.js
+// location) to avoid a duplicate declaration in the output bundle.
+const mainDir = fileURLToPath(new URL('.', import.meta.url))
 
 // Real fs adapter for bootstrapDataDir (recursive mkdir is idempotent).
 const fsAdapter: FsLike = {
@@ -175,7 +172,8 @@ let agent: ReturnType<typeof createAgent> | null = null
 let controlServer: ControlServer | null = null
 // Subscription auto-update scheduler; created + started in boot() with an
 // onResult callback that notifies success/failure. Stopped on shutdown.
-let profileScheduler: ReturnType<typeof createProfileScheduler> | null = null
+let profileScheduler: ReturnType<typeof createDesktopProfileScheduler> | null =
+  null
 // OS system-proxy controller, configured in boot() for the managed mixed port.
 // Kept module-level so the quit/cleanup path can disable() it (anti-lockout).
 let systemProxy: SystemProxyController | null = null
@@ -627,15 +625,15 @@ async function boot(): Promise<void> {
   })
   agent.supervisor.on('log', (l) => kernelLog.write(l.line, l.stream))
 
-  // Drive subscription auto-update against the agent's profile store, surfacing
-  // each refresh outcome as a notification. createAgent builds its own scheduler
-  // (without onResult) but never starts it; the desktop owns the ticking here.
-  profileScheduler = createProfileScheduler({
+  // Validate and apply refreshed active subscriptions before reporting success.
+  // Desktop owns the scheduler so it can restart the current kernel owner and
+  // preserve TUN mode; the agent's server scheduler is not started here.
+  profileScheduler = createDesktopProfileScheduler({
     profiles: agent.profiles,
-    onResult: (r) => {
-      if (r.ok) notify('Subscription updated', `${r.id} refreshed.`)
-      else notify('Subscription update failed', r.error ?? r.id)
-    },
+    supervisor: agent.supervisor,
+    tunController: tunRuntime.controller,
+    homeDir: paths.homeDir,
+    notify,
   })
   profileScheduler.start()
 
@@ -652,7 +650,7 @@ async function boot(): Promise<void> {
 
   // The control server also serves the renderer (same origin as /api/control)
   // from the dir where copy:renderer / electron-builder stage the nuxt output.
-  const rendererDir = join(__dirname, '..', '..', 'renderer')
+  const rendererDir = join(mainDir, '..', '..', 'renderer')
   controlServer = await startControlServer(
     agent.router,
     controlPort,
@@ -854,7 +852,7 @@ function createWindow(): void {
     // uses the dock icon set in whenReady). Packaged builds use the bundle icon.
     ...(devIcon ? { icon: devIcon } : {}),
     webPreferences: {
-      preload: join(__dirname, '..', 'preload', 'index.js'),
+      preload: join(mainDir, '..', 'preload', 'index.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,

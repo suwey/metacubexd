@@ -199,6 +199,30 @@ describe('createProfileStore — import + active', () => {
     )
   })
 
+  it('does not expose subscription credentials in a timeout error', async () => {
+    const dir = tmpDir()
+    const store = createProfileStore({
+      dir,
+      activeConfigPath: join(dir, 'active.yaml'),
+      subscriptionTimeoutMs: 10,
+      fetch: async (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(init.signal?.reason),
+          )
+        }),
+    })
+    const error = await store
+      .importFromUrl(
+        'https://user:password@example.test/sub?token=private-token',
+      )
+      .catch((reason: unknown) => reason)
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).message).toBe(
+      'subscription fetch timed out after 10ms',
+    )
+  })
+
   it('getActiveId is undefined until setActive; setActive writes activeConfigPath', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'mcxd-profiles-act-'))
     const activeConfigPath = join(dir, 'active', 'config.yaml')
@@ -571,6 +595,121 @@ describe('createProfileStore — script profiles', () => {
 })
 
 describe('createProfileStore — refresh', () => {
+  it('preserves concurrent edits and additions while fetching a subscription', async () => {
+    const dir = tmpDir()
+    let n = 0
+    let resume!: () => void
+    let entered!: () => void
+    const started = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    const pending = new Promise<void>((resolve) => {
+      resume = resolve
+    })
+    let fetching = false
+    const options = {
+      dir,
+      activeConfigPath: join(dir, 'active.yaml'),
+      idGen: () => `id${++n}`,
+    }
+    const store = createProfileStore({
+      ...options,
+      fetch: async () => {
+        if (fetching) {
+          entered()
+          await pending
+        }
+        return new Response('mode: rule\n')
+      },
+    })
+    const secondStore = createProfileStore(options)
+    const remote = await store.importFromUrl('https://example.test/sub', 'old')
+    fetching = true
+    const refresh = store.refresh(remote.id)
+    await started
+    await secondStore.update(remote.id, {
+      name: 'renamed',
+      updateInterval: 120,
+    })
+    const added = await secondStore.create({
+      name: 'new',
+      content: 'mode: direct\n',
+    })
+    resume()
+    await refresh
+    expect(await store.list()).toEqual([
+      expect.objectContaining({
+        id: remote.id,
+        name: 'renamed',
+        updateInterval: 120,
+      }),
+      expect.objectContaining({ id: added.id, name: 'new' }),
+    ])
+  })
+
+  it('serializes concurrent index mutations across stores for the same directory', async () => {
+    const dir = tmpDir()
+    let n = 0
+    const options = {
+      dir,
+      activeConfigPath: join(dir, 'active.yaml'),
+      idGen: () => `id${++n}`,
+    }
+    const stores = [createProfileStore(options), createProfileStore(options)]
+    const created = await Promise.all(
+      Array.from({ length: 20 }, (_, index) =>
+        stores[index % 2]!.create({
+          name: `profile ${index}`,
+          content: 'mode: rule\n',
+        }),
+      ),
+    )
+    expect((await stores[0]!.list()).map((meta) => meta.id).sort()).toEqual(
+      created.map((meta) => meta.id).sort(),
+    )
+  })
+
+  it.each(['edit', 'delete'] as const)(
+    'does not overwrite or recreate a profile after a concurrent %s',
+    async (change) => {
+      const dir = tmpDir()
+      let pending = false
+      let resume!: () => void
+      let entered!: () => void
+      const started = new Promise<void>((resolve) => {
+        entered = resolve
+      })
+      const gate = new Promise<void>((resolve) => {
+        resume = resolve
+      })
+      const store = createProfileStore({
+        dir,
+        activeConfigPath: join(dir, 'active.yaml'),
+        idGen: () => 'remote',
+        fetch: async () => {
+          if (pending) {
+            entered()
+            await gate
+          }
+          return new Response('mode: global\n')
+        },
+      })
+      const remote = await store.importFromUrl('https://example.test/sub')
+      pending = true
+      const refresh = store.refresh(remote.id)
+      await started
+      if (change === 'delete') await store.delete(remote.id)
+      else await store.update(remote.id, { content: 'mode: direct\n' })
+      const rejected = expect(refresh).rejects.toThrow(
+        change === 'delete' ? 'profile not found' : 'profile changed',
+      )
+      resume()
+      await rejected
+      if (change === 'delete') expect(await store.list()).toEqual([])
+      else expect(await store.read(remote.id)).toBe('mode: direct\n')
+    },
+  )
+
   it('refresh re-fetches in place: same id, overwritten content, new subscriptionInfo + updatedAt', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'mcxd-profiles-ref-'))
     const activeConfigPath = join(dir, '..', 'active.yaml')
@@ -773,5 +912,91 @@ describe('createProfileStore — config sections', () => {
     await store.setSection('id1', 'mode', 'global')
     const after = parse(await store.read('id1')) as Record<string, unknown>
     expect(after).toEqual({ mode: 'global' })
+  })
+})
+
+describe('createProfileStore — config sections on a remote profile', () => {
+  let dir: string
+  let activeConfigPath: string
+  let body: string
+  let store: ProfileStore
+
+  beforeEach(() => {
+    dir = tmpDir()
+    activeConfigPath = join(dir, 'active', 'config.yaml')
+    body = 'mode: rule\nallow-lan: false\nproxies: []\n'
+    const fakeFetch = (async () =>
+      new Response(body, { status: 200 })) as unknown as typeof fetch
+    let n = 0
+    store = createProfileStore({
+      dir,
+      activeConfigPath,
+      fetch: fakeFetch,
+      idGen: () => `id${++n}`,
+    })
+  })
+
+  const activeConfig = () =>
+    parse(readFileSync(activeConfigPath, 'utf8')) as Record<string, unknown>
+
+  it('keeps section changes across a subscription refresh', async () => {
+    const remote = await store.importFromUrl('https://sub.example/clash')
+    await store.setSection(remote.id, 'allow-lan', true)
+    await store.setSection(remote.id, 'mode', 'global')
+    await store.setSection(remote.id, 'proxies', null)
+    await store.setActive(remote.id)
+    expect(activeConfig()).toEqual({ mode: 'global', 'allow-lan': true })
+
+    body =
+      'mode: rule\nallow-lan: false\nproxies: []\nrules:\n  - MATCH,DIRECT\n'
+    const refreshed = await store.refresh(remote.id)
+    expect(refreshed.editorStatus).toBe('clean')
+    // The base keeps the downloaded subscription; the changes live in the
+    // profile's managed overlay.
+    expect(await store.read(remote.id)).toBe(body)
+    await store.setActive(remote.id)
+    expect(activeConfig()).toEqual({
+      mode: 'global',
+      'allow-lan': true,
+      rules: ['MATCH,DIRECT'],
+    })
+    expect(await store.getSection(remote.id, 'allow-lan')).toBe(true)
+    expect(await store.getSection(remote.id, 'proxies')).toBeNull()
+  })
+
+  it('writes into the visual editor overlay and reuses it', async () => {
+    const remote = await store.importFromUrl('https://sub.example/clash')
+    await store.setSection(remote.id, 'allow-lan', true)
+    await store.setSection(remote.id, 'mode', 'direct')
+    const overlays = (await store.list()).filter(
+      (meta) => meta.managedBy === 'visual-editor',
+    )
+    expect(overlays).toEqual([
+      expect.objectContaining({
+        type: 'merge',
+        baseProfileId: remote.id,
+        editorStatus: 'clean',
+      }),
+    ])
+    // Setting a key back to the subscription's value drops that override.
+    await store.setSection(remote.id, 'allow-lan', false)
+    await store.setActive(remote.id)
+    expect(activeConfig()).toEqual({
+      mode: 'direct',
+      'allow-lan': false,
+      proxies: [],
+    })
+  })
+
+  it('refuses to write while the stored overrides conflict', async () => {
+    const remote = await store.importFromUrl('https://sub.example/clash')
+    await store.setSection(remote.id, 'mode', 'global')
+    body = 'mode: direct\nallow-lan: false\nproxies: []\n'
+    const refreshed = await store.refresh(remote.id)
+    expect(refreshed.editorStatus).toBe('conflicted')
+    await expect(
+      store.setSection(remote.id, 'allow-lan', true),
+    ).rejects.toThrow('conflicts')
+    expect(await store.getSection(remote.id, 'allow-lan')).toBe(false)
   })
 })

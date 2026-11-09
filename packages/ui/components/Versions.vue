@@ -264,15 +264,23 @@ async function fetchReleases() {
 async function handleFrontendUpgrade() {
   if (upgradingUI.value || !frontendRelease.value?.isUpdateAvailable) return
 
-  // Open the GitHub releases page instead of calling the upgrade API.
-  window.open('https://github.com/suwey/metacubexd/releases', '_blank')
+  // #2069: the version badge reads as a passive display, but a click upgrades
+  // the dashboard (downloads/replaces the UI). Guard the accidental click with a
+  // confirm — same pattern as Sidebar's restartCoreConfirm.
+  if (!window.confirm(t('upgradeUIConfirm'))) return
+
+  await configActions.upgradeUIAPI()
+  window.location.reload()
 }
 
 async function handleBackendUpgrade() {
   if (upgradingBackend.value || !backendRelease.value?.isUpdateAvailable) return
 
-  // Open the GitHub releases page instead of calling the upgrade API.
-  window.open('https://github.com/suwey/quiche/releases', '_blank')
+  // #2069: same accidental-click guard as the dashboard upgrade above.
+  if (!window.confirm(t('upgradeCoreConfirm'))) return
+
+  await configActions.upgradeBackendAPI()
+  window.location.reload()
 }
 
 // Collapsed sidebar rail: the default-collapsed sidebar previously rendered

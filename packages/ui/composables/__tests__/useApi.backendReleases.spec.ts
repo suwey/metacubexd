@@ -65,7 +65,7 @@ describe('composables/useApi backend release helpers', () => {
     expect(options.headers.has('Authorization')).toBe(false)
   })
 
-  it('keeps regular alpha builds on the MetaCubeX/mihomo release feed', async () => {
+  it('keeps regular alpha builds on the suwey/quiche release feed', async () => {
     githubGet.mockReturnValue(
       responseJson({
         assets: [{ name: 'mihomo-windows-amd64-alpha-6c49454.zip' }],
@@ -82,7 +82,7 @@ describe('composables/useApi backend release helpers', () => {
       changelog: 'alpha notes',
     })
     expect(githubGet).toHaveBeenCalledWith(
-      'repos/MetaCubeX/mihomo/releases/tags/Prerelease-Alpha',
+      'repos/suwey/quiche/releases/tags/Prerelease-Alpha',
     )
   })
 
@@ -118,7 +118,7 @@ describe('composables/useApi backend release helpers', () => {
     )
 
     expect(githubGet).toHaveBeenCalledWith(
-      'repos/MetaCubeX/mihomo/releases/tags/Prerelease-Alpha',
+      'repos/suwey/quiche/releases/tags/Prerelease-Alpha',
     )
   })
 

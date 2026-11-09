@@ -234,6 +234,7 @@
   "tunEnableFailed": "Échec de l'activation du mode TUN",
   "tunDisableSuccess": "Mode TUN désactivé — réseau restauré",
   "tunDisableFailed": "Échec de la désactivation du mode TUN",
+  "tunSaveFailed": "Échec de l'enregistrement des paramètres TUN",
   "tunRecoverNetwork": "Restaurer le réseau",
   "tunInstallNote": "L'activation de TUN installe un assistant privilégié et demande une autorisation administrateur. Une version non signée affichera un avertissement « éditeur inconnu » — c'est normal.",
   "tunNeedsProfile": "Importez un abonnement avant d'activer le mode TUN.",
@@ -338,6 +339,13 @@
   "fetchRemoteConfig": "Récupérer la configuration distante",
   "remoteConfigURL": "URL de configuration distante",
   "remoteConfigURLPlaceholder": "Entrez l'URL du fichier de configuration",
+  "uploadConfigHint": "Cliquez ou faites glisser le fichier de configuration ici pour l'appliquer",
+  "applyingConfig": "Application de la configuration...",
+  "configFileApplied": "Fichier de configuration appliqué avec succès",
+  "configFileApplyFailed": "Échec de l'application du fichier de configuration",
+  "configFileEmpty": "Le fichier de configuration est vide",
+  "editConfigFile": "Modifier le fichier de configuration",
+  "configFileLoadFailed": "Échec du chargement du fichier de configuration",
   "shortcuts": {
     "title": "Raccourcis clavier",
     "category": {

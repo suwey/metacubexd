@@ -234,6 +234,7 @@
   "tunEnableFailed": "فعال‌سازی حالت TUN ناموفق بود",
   "tunDisableSuccess": "حالت TUN غیرفعال شد — شبکه بازیابی شد",
   "tunDisableFailed": "غیرفعال‌سازی حالت TUN ناموفق بود",
+  "tunSaveFailed": "ذخیره تنظیمات TUN ناموفق بود",
   "tunRecoverNetwork": "بازیابی شبکه",
   "tunInstallNote": "فعال‌سازی TUN یک کمک‌یار با دسترسی ویژه نصب می‌کند و درخواست مجوز مدیر را نمایش می‌دهد. نسخه‌ی امضانشده هشدار «ناشر ناشناس» را نشان می‌دهد — این طبیعی است.",
   "tunNeedsProfile": "پیش از فعال‌سازی حالت TUN یک اشتراک وارد کنید.",
@@ -338,6 +339,13 @@
   "fetchRemoteConfig": "دریافت پیکربندی راه دور",
   "remoteConfigURL": "URL پیکربندی راه دور",
   "remoteConfigURLPlaceholder": "URL فایل پیکربندی را وارد کنید",
+  "uploadConfigHint": "برای اعمال، فایل پیکربندی را اینجا کلیک کنید یا بکشید",
+  "applyingConfig": "در حال اعمال پیکربندی...",
+  "configFileApplied": "فایل پیکربندی با موفقیت اعمال شد",
+  "configFileApplyFailed": "اعمال فایل پیکربندی ناموفق بود",
+  "configFileEmpty": "فایل پیکربندی خالی است",
+  "editConfigFile": "ویرایش فایل پیکربندی",
+  "configFileLoadFailed": "بارگذاری فایل پیکربندی ناموفق بود",
   "shortcuts": {
     "title": "میانبرهای صفحه‌کلید",
     "category": {

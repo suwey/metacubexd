@@ -1,5 +1,61 @@
 # Changelog
 
+## [1.274.6](https://github.com/MetaCubeX/metacubexd/compare/v1.274.5...v1.274.6) (2026-11-09)
+
+
+### Bug Fixes
+
+* **ui:** keep the most recent closed connections ([#2250](https://github.com/MetaCubeX/metacubexd/issues/2250)) ([aa52345](https://github.com/MetaCubeX/metacubexd/commit/aa523456de02641788e0a75df133990f35b8c01a))
+
+## [1.274.5](https://github.com/MetaCubeX/metacubexd/compare/v1.274.4...v1.274.5) (2026-11-07)
+
+
+### Bug Fixes
+
+* **agent:** keep config section edits on remote profiles across refresh ([#2246](https://github.com/MetaCubeX/metacubexd/issues/2246)) ([c5eec85](https://github.com/MetaCubeX/metacubexd/commit/c5eec85e90b33500756104e7732369ae7a25cc0d)), closes [#2215](https://github.com/MetaCubeX/metacubexd/issues/2215)
+* **ui:** offer only TUN stacks mihomo accepts ([#2247](https://github.com/MetaCubeX/metacubexd/issues/2247)) ([ca41801](https://github.com/MetaCubeX/metacubexd/commit/ca4180166ba19401b6a5b3cabcdb7553600d706f)), closes [#2196](https://github.com/MetaCubeX/metacubexd/issues/2196)
+
+## [1.274.4](https://github.com/MetaCubeX/metacubexd/compare/v1.274.3...v1.274.4) (2026-11-04)
+
+
+### Bug Fixes
+
+* **desktop:** avoid duplicate __dirname declaration in main bundle ([#2241](https://github.com/MetaCubeX/metacubexd/issues/2241)) ([62aa58f](https://github.com/MetaCubeX/metacubexd/commit/62aa58ffaf912c51045d50d68f405e056d00ef84))
+* **desktop:** use static AppImage runtime toolset to avoid libfuse2 dependency ([#2242](https://github.com/MetaCubeX/metacubexd/issues/2242)) ([42788e2](https://github.com/MetaCubeX/metacubexd/commit/42788e2238e3df35c264b3e5e5686f7a88ffe23b))
+
+## [1.274.3](https://github.com/MetaCubeX/metacubexd/compare/v1.274.2...v1.274.3) (2026-10-31)
+
+
+### Bug Fixes
+
+* **connections:** prevent live table flicker and layout shifts ([710f395](https://github.com/MetaCubeX/metacubexd/commit/710f39506ef58b7a6d94ce0afde4576dc3fb4d5e))
+
+## [1.274.2](https://github.com/MetaCubeX/metacubexd/compare/v1.274.1...v1.274.2) (2026-10-31)
+
+
+### Bug Fixes
+
+* harden profile updates and desktop lifecycle ([220e127](https://github.com/MetaCubeX/metacubexd/commit/220e127205de9f6fda293f229217237c26ff247e))
+
+## [1.274.1](https://github.com/MetaCubeX/metacubexd/compare/v1.274.0...v1.274.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **ui:** prevent redirect-only static builds with relative base URL ([a67a665](https://github.com/MetaCubeX/metacubexd/commit/a67a66537b14dc3566d586f289d8ddfe4b19db60))
+
+## [1.274.0](https://github.com/MetaCubeX/metacubexd/compare/v1.273.1...v1.274.0) (2026-10-31)
+
+
+### Features
+
+* **proxies:** add persistent per-group node search ([#2204](https://github.com/MetaCubeX/metacubexd/issues/2204)) ([dbc9ee8](https://github.com/MetaCubeX/metacubexd/commit/dbc9ee8261a7652d741ac0d03fc33f84d7d4638a))
+
+
+### Bug Fixes
+
+* **ui:** avoid replaying connection totals in data usage ([#2227](https://github.com/MetaCubeX/metacubexd/issues/2227)) ([75470e8](https://github.com/MetaCubeX/metacubexd/commit/75470e81f035e2207db5cf94ad70fe902eb0bd13))
+
 ## [1.273.1](https://github.com/MetaCubeX/metacubexd/compare/v1.273.0...v1.273.1) (2026-09-10)
 
 

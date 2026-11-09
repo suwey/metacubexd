@@ -144,9 +144,7 @@ export const useConfigStore = defineStore('config', () => {
       localStorage.removeItem('useMobileConnectionsTable')
       try {
         return (JSON.parse(legacyRaw) === true ? 'table' : 'auto') as
-          | 'auto'
-          | 'table'
-          | 'card'
+          'auto' | 'table' | 'card'
       } catch {
         return 'auto' as const
       }
@@ -193,6 +191,12 @@ export const useConfigStore = defineStore('config', () => {
 
   // Proxies: in-group node name filter (case-insensitive substring on node name)
   const proxiesGroupNameFilter = useLocalStorage('proxiesGroupNameFilter', '')
+  // Proxies: per-group node searches, keyed by group name and persisted across
+  // navigation/reloads.
+  const proxyGroupSearchQueries = useLocalStorage<Record<string, string>>(
+    'proxyGroupSearchQueries',
+    {},
+  )
   // Proxies: show an A-Z quick-jump index rail for long node lists
   const enableProxiesAlphabetIndex = useLocalStorage(
     'enableProxiesAlphabetIndex',
@@ -323,6 +327,7 @@ export const useConfigStore = defineStore('config', () => {
     iconHeight.value = 24
     iconMarginRight.value = 8
     proxiesGroupNameFilter.value = ''
+    proxyGroupSearchQueries.value = {}
     enableProxiesAlphabetIndex.value = false
   }
 
@@ -400,6 +405,7 @@ export const useConfigStore = defineStore('config', () => {
     enableDataUsageTracking,
     // Proxies in-group filter & alphabet index
     proxiesGroupNameFilter,
+    proxyGroupSearchQueries,
     enableProxiesAlphabetIndex,
     // Rules
     rulesOrderingType,

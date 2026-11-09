@@ -23,6 +23,9 @@ interface BuilderConfig {
   rpm: {
     packageName: string
   }
+  toolsets?: {
+    appimage?: string
+  }
 }
 
 const desktopRoot = resolve(import.meta.dirname, '../../..')
@@ -66,6 +69,7 @@ describe('desktop distribution configuration', () => {
       rpm: ['x64', 'arm64'],
       pacman: ['x64', 'arm64'],
     })
+    expect(config.toolsets?.appimage).toBe('1.0.3')
     expect(config.linux.syncDesktopName).toBe(true)
 
     const packageJson = JSON.parse(
@@ -117,5 +121,14 @@ describe('desktop distribution configuration', () => {
     ].join('')
     expect(workflow).toContain(stableDmgAsset)
     expect(cask).toContain('MetaCubeXD-mac-#{arch}.dmg')
+  })
+
+  it('avoids redeclaring __dirname or __filename in main process ESM sources', () => {
+    for (const relPath of ['src/main/index.ts', 'src/main/tray.ts']) {
+      const source = readFileSync(resolve(desktopRoot, relPath), 'utf8')
+      expect(source).not.toMatch(
+        /^\s*(?:const|let|var)\s+__(?:dirname|filename)\b/m,
+      )
+    }
   })
 })

@@ -617,6 +617,53 @@ describe('createControlRouter — profiles + SSE', () => {
     })
   })
 
+  it.each([
+    {
+      op: 'set',
+      target: { path: ['__proto__', 'mcxdPolluted'] },
+      expectedHash: 'hash',
+      value: true,
+    },
+    { op: 'set', target: { path: [] }, expectedHash: 'hash', value: true },
+    {
+      op: 'unknown',
+      target: { path: ['mode'] },
+      expectedHash: 'hash',
+      value: true,
+    },
+    null,
+  ])(
+    'rejects unsafe or malformed editor operations before invoking the editor: %j',
+    async (operation) => {
+      const deps = makeDeps()
+      const profileEditor = {
+        open: vi.fn(),
+        preview: vi.fn(async () => ({ ok: true })),
+        apply: vi.fn(async () => ({ ok: true })),
+        resetManagedOverlay: vi.fn(),
+      }
+      srv = await mount({ ...deps, profileEditor } as never)
+      for (const [suffix, method] of [
+        ['/preview', 'POST'],
+        ['', 'PUT'],
+      ]) {
+        const res = await fetch(
+          `${srv.base}/api/control/profiles/p1/editor${suffix}`,
+          {
+            method,
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              patch: { version: 1, baseRevision: '', operations: [operation] },
+            }),
+          },
+        )
+        expect(res.status).toBe(400)
+      }
+      expect(profileEditor.preview).not.toHaveBeenCalled()
+      expect(profileEditor.apply).not.toHaveBeenCalled()
+    },
+  )
+
   it('gET /api/control/kernel/logs streams text/event-stream and pushes a state event', async () => {
     const deps = makeDeps()
     // Capture the registered 'log' callback so we can drive a fake log line.
